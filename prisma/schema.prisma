@@ -1,0 +1,353 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model User {
+  id                 Int         @id @default(autoincrement())
+  name               String
+  email              String      @unique
+  hashedPassword     String?
+  image              String?
+  designation        String?
+  role               Role        @default(USER)
+  gender             Gender?
+  is_moderator       Boolean     @default(false)
+  email_confirmed    Boolean     @default(false)
+  email_confirmed_at DateTime?
+  is_active          Boolean     @default(true)
+  created_at         DateTime    @default(now())
+  updated_at         DateTime    @updatedAt
+  accounts           Account[]
+  profile            Profile?
+  courses            Course[]
+  favourites         Favourite[]
+  enrolments         Enrolment[]
+  earnings           Earning[]
+  progresses         Progress[]
+  reviews            Review[]
+}
+
+model Account {
+  id                Int     @id @default(autoincrement())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Profile {
+  id       Int     @id @default(autoincrement())
+  userId   Int     @unique
+  bio      String? @db.Text
+  location String?
+  phone    String?
+  website  String?
+  twitter  String?
+  facebook String?
+  linkedin String?
+  youtube  String?
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id          Int                   @id @default(autoincrement())
+  name        String
+  image       String                @default("/public/images/classes/muay.jpg")
+  description String?               @db.Text
+  slug        String                @unique
+  created_at  DateTime              @default(now())
+  updated_at  DateTime              @updatedAt
+  instructors CategoryInstructors[] @relation("CategoryInstructors")
+  courses     Course[]
+  schedule    Schedule[]
+}
+
+model Instructor {
+  id          Int                   @id @default(autoincrement())
+  name        String
+  image       String?
+  description String @db.Text
+  videoImage String  @default("/public/images/classes/muay.jpg")
+  videoUrl String     @default("https://www.youtube.com/watch?v=Ui6DJdr9TqU&t=75s")  
+  created_at  DateTime              @default(now())
+  updated_at  DateTime              @updatedAt
+  categories  CategoryInstructors[] @relation("CategoryInstructors")
+}
+
+model CategoryInstructors {
+  categoryId   Int
+  instructorId Int
+  category     Category   @relation("CategoryInstructors", fields: [categoryId], references: [id], onDelete: Cascade)
+  instructor   Instructor @relation("CategoryInstructors", fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, instructorId])
+}
+
+model Schedule {
+  id        Int        @id @default(autoincrement())
+  time      String     @unique
+  Monday    String
+  Tuesday   String
+  Wednesday String
+  Thursday  String
+  Friday    String
+  Saturday  String
+  category  Category[]
+}
+
+model Testimonial {
+  id          Int      @id @default(autoincrement())
+  name        String
+  image       String?
+  designation String
+  description String   @db.Text
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  name        String
+  image       String?
+  time        DateTime
+  description String   @db.Text
+  venue       String
+  organizer   String
+  phone       String
+  address     String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model Partner {
+  id         Int      @id @default(autoincrement())
+  name       String
+  image      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Gallery {
+  id         Int      @id @default(autoincrement())
+  title      String
+  image      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Announcement {
+  id                   Int      @id @default(autoincrement())
+  homeAnnouncement     String?
+  scheduleAnnouncement String?
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+}
+
+model Course {
+  id                     Int         @id @default(autoincrement())
+  userId                 Int
+  catId                  Int
+  title                  String
+  slug                   String      @unique
+  overview               String      @db.Text
+  regular_price          Float?
+  before_price           Float?
+  is_free                Boolean     @default(false)
+  lessons                String
+  duration               String
+  image                  String
+  access_time            ACCESSTIME  @default(Lifetime)
+  requirements           String      @db.Text
+  what_you_will_learn    String      @db.Text
+  who_is_this_course_for String      @db.Text
+  approved               Boolean     @default(false)
+  in_home_page           Boolean     @default(false)
+  is_class               Boolean     @default(false)
+  created_at             DateTime    @default(now())
+  updated_at             DateTime    @updatedAt
+  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category               Category    @relation(fields: [catId], references: [id], onDelete: Cascade)
+  videos                 Video[]
+  assets                 Asset[]
+  favourites             Favourite[]
+  enrolments             Enrolment[]
+  earnings               Earning[]
+  progresses             Progress[]
+  reviews                Review[]
+
+  @@index([userId, catId])
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  rating     Int
+  comment    String?  @db.Text
+  userId     Int
+  courseId   Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, courseId])
+}
+
+model Video {
+  id           Int        @id @default(autoincrement())
+  courseId     Int
+  group_name   String?
+  title        String
+  thumb_Image  String?
+  video_url    String
+  video_length String?
+  is_preview   Boolean    @default(false)
+  short_id     Int        @default(0)
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+  course       Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progresses   Progress[]
+
+  @@index([courseId])
+}
+
+model Asset {
+  id           Int      @id @default(autoincrement())
+  courseId     Int
+  lecture_name String
+  asset_zip    String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+}
+
+model Favourite {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  courseId   Int
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, userId])
+}
+
+model Enrolment {
+  id             Int           @id @default(autoincrement())
+  userId         Int
+  courseId       Int
+  order_number   String        @unique
+  price          Int?
+  paymentId      String?
+  payment_status PaymentStatus @default(PENDING)
+  status         PaymentStatus @default(PENDING)
+  payment_via    String?
+  created_at     DateTime      @default(now())
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, userId])
+}
+
+model Earning {
+  id         Int           @id @default(autoincrement())
+  cost       Float?
+  userId     Int
+  courseId   Int
+  status     EARNINGSTATUS @default(Due)
+  created_at DateTime      @default(now())
+  updated_at DateTime      @updatedAt
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course     Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, userId])
+}
+
+model Progress {
+  id         Int      @id @default(autoincrement())
+  finished   Boolean  @default(true)
+  userId     Int
+  courseId   Int
+  videoId    Int
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  video      Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, userId, videoId])
+}
+
+model Coupon {
+  id                   Int       @id @default(autoincrement())
+  code                 String    @unique
+  discount             Float
+  exp_date             DateTime?
+  status               Boolean?
+  deleted_at           DateTime?
+  active_for_full_site Boolean   @default(false)
+  created_at           DateTime  @default(now())
+}
+
+model Subscription {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+}
+
+model CategoryToSchedule {
+  A Int
+  B Int
+
+  @@unique([A, B], map: "_CategoryToSchedule_AB_unique")
+  @@index([B], map: "_CategoryToSchedule_B_index")
+  @@map("_CategoryToSchedule")
+}
+
+enum ACCESSTIME {
+  Lifetime
+  Three_Months
+  Six_Months
+  One_Year
+}
+
+enum Gender {
+  Male
+  Female
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  HOLD
+}
+
+enum EARNINGSTATUS {
+  Due
+  Paid
+  Cancelled
+}

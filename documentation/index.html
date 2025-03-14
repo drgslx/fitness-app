@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+
+
+        <title>TechFit - Tailwind Nextjs 14+ Coaching & Online Courses Template</title>
+        
+        <link href="css/collection.css" rel="stylesheet">
+        <link href="css/custom.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Raleway:100,300,400,500%7CLato:300,400" rel="stylesheet" type="text/css">
+        <script src="js/other.js"></script>
+        <script src="js/custom.js"></script>
+    </head>
+
+    <body data-spy="scroll" data-target=".sidebar" data-offset="200">
+        <aside class="sidebar sidebar-boxed sidebar-dark">  
+            <ul class="nav sidenav dropable">
+                <li><a href="#introduction" title="Introduction">Introduction</a></li>
+                <li><a href="#getting_started" title="Setup Development Envrionment">Setup Development Environment</a></li>
+                <li><a href="#documenter_cover">Pages and Components Info</a></li>
+                <li><a href="#dependencies" title="Dependencies">Dependencies</a></li> 
+				<li><a href="#run_scss_file" title="Color Change Option">SCSS File</a></li>
+                <li><a href="#credits" title="Credits">Credits</a></li>
+                <li><a href="#supports" title="Support">Support</a></li>
+            </ul>
+        </aside>
+  
+        <header class="site-header navbar-transparent"> 
+            <div class="banner auto-size" style="background-color: #455aa2">
+                <div class="container-fluid">
+                    <h1><strong>TechFit - React</strong>  Documentation</h1>
+                </div>
+            </div>
+        </header>
+        
+        <main class="container-fluid"> 
+            <article class="main-content" role="main">
+                <section id="introduction">
+                    <div class="page-header">
+                        <h3>Getting Started</h3>
+                    </div>
+					<p>Welcome to TechFit React Next.js template! We would like to thank you, for buy our template - TechFit.</p>
+                    <p>TechFit is a React Next.js and Tailwind CSS based Coaching & Online Courses template. This has been built with React and as framework Next.js!</p>
+                </section>
+
+                <section id="getting_started">
+                    <div class="page-header">
+                        <h3>Setup Development Environment</h3>
+                    </div>
+                    <p>
+                        To kickstart the development of the web app with TechFit, at first need to setup the react development environment.
+                    </p>
+                    <p>Following tools are needed to setup a react dev environment:</p>
+                    <ul>
+                        <li><b>Node JS</b></li>
+                        <p>
+                            NodeJS works as a node package manager behind the scene. It is recommended to download and install the latest version of Node JS from its official site <a href="http://nodejs.org/" target="_blank">http://nodejs.org/</a>
+                        </p>
+                    </ul>
+                
+                    <div class="page-header">
+                        <h3>Preparation</h3>
+                    </div>
+                    <p>
+                        You'll need to install <a href="https://nodejs.org/en/" target="_blank">Node.js (Recommended Version)</a> (NPM comes along with it) and serve (a NPM package)
+                    </p>
+                    <p>Use command line tool i.e. PowerShell or terminal and navigate to the project(Plaon) root. This is PowerShell in windows and terminal on mac/linux.</p>
+
+                    <strong>Let's have a look on the setup process:</strong> <br>
+                    <p>Use terminal and navigate to the project root.</p>
+                    <p>Then run : <code class="language-markup">npm install</code></p>
+                    <p>Then run : <code class="language-markup">npm run dev</code></p>
+                    <p>It'll return something like this in the console:</p>
+                    <p>> project@1.0.0 dev drive:\project</p>
+                    <p>> next</p>
+                    <p>[ wait ] starting the development server ...</p>
+                    <p>[ ready ] started server on http://localhost:3000 ...</p>
+                    <p>[ event ] compiled successfully</p>
+                    <p>Now, in the browser go to <a href="http://localhost:3000/">localhost:3000</a></p>
+					
+                    <div class="page-header">
+                        <h3>For Production Build</h3>
+                    </div>
+                    <p>Run : <code class="language-markup">npm run build</code></p>
+                    <p>Then Run : <code class="language-markup">npm run start</code></p>
+                    <p>See the official next.js doc <a href="https://nextjs.org/docs/deployment#other-hosting-options" target="_blank">here</a></p>
+                </section>
+
+                <section id="documenter_cover">
+                    <div class="page-header">
+                        <h3>Pages and Components Info</h3>
+                    </div>
+                    <div id="documenter_buttons"></div>
+					<ul>
+						<li>Health Coach Homepage 1 (<b>/src/app/[lang]/page.tsx</b>)</li> 
+						<li>Health Coach Homepage 1 (<b>/src/app/[lang]/about/page.tsx</b>)</li> 
+						<li>Health Coach Homepage 1 (<b>/src/app/[lang]/blog/page.tsx</b>)</li> 
+						<li>and more...</li>
+					</ul>
+		
+                    <h6 style="margin-top:20px"><strong>Common Components:</strong></h6>
+                    <ul>
+                        <li>Navbar (<b>/src/components/Layout/Navbar.tsx</b>)</li> 
+                        <li>NavbarTwo (<b>/src/components/Layout/NavbarTwo.tsx</b>)</li> 
+                        <li>NavbarThree (<b>/src/components/Layout/NavbarThree.tsx</b>)</li> 
+                        <li>Footer (<b>/src/components/Layout/Footer.tsx</b>)</li> 
+                        <li>FooterTwo (<b>/src/components/Layout/FooterTwo.tsx</b>)</li> 
+                        <li>FooterThree (<b>/src/components/Layout/FooterThree.tsx</b>)</li> 
+                        <li>BackToTop (<b>/src/components/Layout/BackToTop.tsx</b>)</li> 
+                        <li>and more...</li>
+                    </ul>
+                </section>
+
+                <section id="dependencies">
+                    <div class="page-header">
+                        <h3>Dependencies</h3>
+                    </div>
+                    <p> Here are the <strong>dependencies</strong> list which being used in the TechFit React Template:</p>
+                    <pre class="line-numbers">
+<code class="language-markup"> 
+"dependencies": {
+    "@formatjs/intl-localematcher": "^0.5.4",
+    "@next-auth/prisma-adapter": "^1.0.7",
+    "@prisma/client": "^5.13.0",
+    "@stripe/react-stripe-js": "^2.7.1",
+    "aos": "^2.3.4",
+    "axios": "^1.6.8",
+    "bcrypt": "^5.1.1",
+    "fslightbox-react": "^1.7.6",
+    "he": "^1.2.0",
+    "html-to-image": "^1.11.11",
+    "jspdf": "^2.5.1",
+    "mysql2": "^3.9.7",
+    "negotiator": "^0.6.3",
+    "next": "14.2.3",
+    "next-auth": "^4.24.7",
+    "next-cloudinary": "^6.5.1",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-hook-form": "^7.51.4",
+    "react-hot-toast": "^2.4.1",
+    "react-player": "^2.16.0",
+    "react-select": "^5.8.0",
+    "react-sticky-box": "^2.0.5",
+    "remixicon": "^4.2.0",
+    "sharp": "^0.33.3",
+    "stripe": "^15.6.0",
+    "swiper": "^11.1.1",
+    "zustand": "^4.5.2"
+},
+"devDependencies": {
+    "eslint": "^8",
+    "eslint-config-next": "14.2.3",
+    "postcss": "^8",
+    "prisma": "^5.13.0",
+    "tailwindcss": "^3.4.1"
+}
+</code>
+                    </pre class="brush:css">
+                </section>
+  
+				<section id="run_scss_file">
+                    <div class="page-header">
+                        <h3>How to Run The SCSS File</h3>
+                    </div>
+					<p>Please open the file Visual Studio Code Editor. And follow the video tutorial.</p>
+					<p>Here the Link: <a href="https://www.youtube.com/watch?v=0MWmv1Gvv5w" target="_blank">https://www.youtube.com/watch?v=0MWmv1Gvv5w</a></p>
+                </section>
+	 
+                
+                <section id="credits">
+                    <div class="page-header">
+                        <h3>Credits</h3>
+                    </div>
+                    <strong>Images</strong><br>
+                    <a href="https://unsplash.com/" target="_blank">Unsplash</a><br />
+                    <a href="https://burst.shopify.com/" target="_blank">Burst</a><br />
+                    <a href="https://www.freepik.com/" target="_blank">Freepick</a><br />
+
+                    <div class="height-15"></div>
+
+                    <strong>Packages</strong><br>
+                     
+                    <a href="https://nextjs.org/" target="_blank">Next.js</a><br />
+                    <a href="https://tailwindcss.com/" target="_blank">Tailwind CSS</a><br />
+                    <a href="https://www.npmjs.com/package/fslightbox-react" target="_blank">fslightbox</a><br />
+                    <a href="https://react-hook-form.com/" target="_blank">React hook form</a><br />
+                    <a href="https://fonts.google.com/" target="_blank">Google Fonts</a><br />
+                    <a href="https://github.com/springload/react-accessible-accordion" target="_blank">react-accessible-accordion</a><br />
+                </section>
+                
+                <section id="supports">
+                    <div class="page-header">
+                        <h3 style="margin-top: 0; margin-bottom: 12px;">24-Hour Turnaround Support:</h3>
+                    </div>
+					 
+					<p>Quick, Dedicated & Professional Support!</p>
+					
+					<p>We only provide support through our ticketing system. Please submit your ticket by visiting the <a href="https://support.envytheme.com/" target="_blank">EnvyTheme Support System</a>.</p>
+					
+					<p>For any pre-purchase query, please use live chat on the item demo site also, email, and the item’s comment section on ThemeForest. Thanks!</p>
+                </section>
+            </article>
+            <!-- END Main content --> 
+        </main>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+            <div class="container-fluid"> <a id="scroll-up" href="#"><i class="fa fa-angle-up"></i></a>
+                <div class="row">
+                    <div class="col-md-6 col-sm-6">
+                        <p>&copy; TechFit All right reserved EnvyTheme</p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        <!-- END Footer -->
+    </body>
+</html>
