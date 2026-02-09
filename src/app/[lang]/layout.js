@@ -1,4 +1,5 @@
 import { League_Spartan, Poppins } from "next/font/google";
+import QueryProvider from "../QueryProvider"
 import "swiper/css/bundle";
 import "../../../public/css/navbar.css";
 import "remixicon/fonts/remixicon.css";
