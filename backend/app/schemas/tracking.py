@@ -1,13 +1,49 @@
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
-Positive = Annotated[float, Field(gt=0, le=100000, allow_inf_nan=False)]
-NonNegative = Annotated[float, Field(ge=0, le=100000, allow_inf_nan=False)]
-Key = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,59}$")]
+
+Positive = Annotated[
+    float,
+    Field(gt=0, le=100000, allow_inf_nan=False),
+]
+
+NonNegative = Annotated[
+    float,
+    Field(ge=0, le=100000, allow_inf_nan=False),
+]
+
+Key = Annotated[
+    str,
+    Field(pattern=r"^[a-z][a-z0-9_]{0,59}$"),
+]
+
+
 class Input(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
+
+
+class SportTypeIn(Input):
+    name: str = Field(min_length=1, max_length=100)
+
+
+class ExerciseDefinitionIn(Input):
+    name: str = Field(min_length=1, max_length=160)
+    tracking_type: Literal[
+        "strength",
+        "repetitions",
+        "duration",
+        "distance",
+        "mixed",
+    ]
+
+
 class Exercise(Input):
+    exercise_id: int | None = Field(default=None, gt=0)
     name: str = Field(min_length=1, max_length=160)
     sets: int = Field(default=1, ge=1, le=100)
     reps: int | None = Field(default=None, ge=1, le=10000)

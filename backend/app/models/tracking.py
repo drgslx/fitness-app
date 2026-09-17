@@ -2,6 +2,50 @@ from datetime import date, datetime
 from sqlalchemy import Date, DateTime, Float, Integer, JSON, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    UniqueConstraint,
+    func,
+)
+
+class SportType(Base):
+    __tablename__ = "sport_types"
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_sport_type_user_name"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ExerciseDefinition(Base):
+    __tablename__ = "exercise_definitions"
+    __table_args__ = (
+        UniqueConstraint(
+            "sport_type_id",
+            "name",
+            name="uq_exercise_sport_name",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    sport_type_id: Mapped[int] = mapped_column(
+        ForeignKey("sport_types.id", ondelete="CASCADE"),
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(160))
+    tracking_type: Mapped[str] = mapped_column(String(30))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 class Workout(Base):
     __tablename__ = "workouts"

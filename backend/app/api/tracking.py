@@ -1,11 +1,33 @@
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.core.security import current_user, require_admin
 from app.db.session import get_db
 from app.models.tracking import Workout, WorkoutLog, Nutrient, Food, DiaryEntry, GoalType, NutritionGoal
 from app.schemas.tracking import WorkoutIn, NutrientIn, FoodIn, EntryIn, GoalTypeIn, GoalIn
+from sqlalchemy import func, select
+from app.models.tracking import (
+    Workout,
+    WorkoutLog,
+    Nutrient,
+    Food,
+    DiaryEntry,
+    GoalType,
+    NutritionGoal,
+    SportType,
+    ExerciseDefinition,
+)
+from app.schemas.tracking import (
+    WorkoutIn,
+    NutrientIn,
+    FoodIn,
+    EntryIn,
+    GoalTypeIn,
+    GoalIn,
+    SportTypeIn,
+    ExerciseDefinitionIn,
+)
 
 router = APIRouter(tags=["tracking"])
 def row(item):
@@ -21,6 +43,126 @@ def dates(start, end):
 def save(db, item):
     db.add(item); db.commit(); db.refresh(item)
     return row(item)
+
+@router.get("/sport-types")
+def sport_types(
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    items = db.scalars(
+        select(SportType)
+        .where(
+            SportType.user_id == user["uid"],
+            SportType.is_active.is_(True),
+        )
+        .order_by(SportType.name)
+    ).all()
+
+    return [row(item) for item in items]
+
+
+@router.post("/sport-types", status_code=201)
+def add_sport_type(
+    data: SportTypeIn,
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    existing = db.scalar(
+        select(SportType).where(
+            SportType.user_id == user["uid"],
+            func.lower(SportType.name) == data.name.lower(),
+        )
+    )
+
+    if existing:
+        raise HTTPException(409, "Sport type already exists")
+
+    return save(
+        db,
+        SportType(
+            user_id=user["uid"],
+            name=data.name,
+        ),
+    )
+
+
+@router.delete("/sport-types/{sport_id}", status_code=204)
+def delete_sport_type(
+    sport_id: int,
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    sport = owner(db, SportType, sport_id, user)
+    sport.is_active = False
+    db.commit()
+
+
+@router.get("/sport-types/{sport_id}/exercises")
+def exercise_definitions(
+    sport_id: int,
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    owner(db, SportType, sport_id, user)
+
+    items = db.scalars(
+        select(ExerciseDefinition)
+        .where(
+            ExerciseDefinition.sport_type_id == sport_id,
+            ExerciseDefinition.user_id == user["uid"],
+            ExerciseDefinition.is_active.is_(True),
+        )
+        .order_by(ExerciseDefinition.name)
+    ).all()
+
+    return [row(item) for item in items]
+
+
+@router.post("/sport-types/{sport_id}/exercises", status_code=201)
+def add_exercise_definition(
+    sport_id: int,
+    data: ExerciseDefinitionIn,
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    owner(db, SportType, sport_id, user)
+
+    existing = db.scalar(
+        select(ExerciseDefinition).where(
+            ExerciseDefinition.sport_type_id == sport_id,
+            func.lower(ExerciseDefinition.name) == data.name.lower(),
+        )
+    )
+
+    if existing:
+        raise HTTPException(409, "Exercise already exists for this sport")
+
+    return save(
+        db,
+        ExerciseDefinition(
+            user_id=user["uid"],
+            sport_type_id=sport_id,
+            name=data.name,
+            tracking_type=data.tracking_type,
+        ),
+    )
+
+
+@router.delete("/exercises/{exercise_id}", status_code=204)
+def delete_exercise_definition(
+    exercise_id: int,
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    exercise = owner(
+        db,
+        ExerciseDefinition,
+        exercise_id,
+        user,
+    )
+
+    exercise.is_active = False
+    db.commit()
 
 @router.get("/me")
 def me(user=Depends(current_user)):
@@ -110,6 +252,15 @@ def edit_food(item_id: int, data: FoodIn, user=Depends(current_user), db: Sessio
     validate_food(data, db)
     for key, value in data.model_dump().items(): setattr(food, key, value)
     return save(db, food)
+
+@router.delete("/foods/{item_id}", status_code=204, dependencies=[Depends(require_admin)])
+def delete_food(item_id: int, db: Session = Depends(get_db)):
+    food = db.get(Food, item_id)
+    if food is None:
+        raise HTTPException(404, "Food not found")
+
+    db.delete(food)
+    db.commit()
 
 def entry_values(data, db):
     food = db.get(Food, data.food_id)
