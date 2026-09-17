@@ -1,0 +1,173 @@
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  padding: 0 max(5vw, 24px);
+  background: #09100ce8;
+  border-bottom: 1px solid #ffffff1a;
+  backdrop-filter: blur(16px);
+}
+
+.navbar-brand {
+  color: #72f29c;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+}
+
+.app-navbar .navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-navbar .navbar-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 10px 14px;
+  color: #d7dfd9;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.app-navbar .navbar-item:hover {
+  color: #ffffff;
+  background: #203629;
+  border-color: #72f29c4d;
+  box-shadow: 0 8px 22px #0000004d;
+  transform: translateY(-2px);
+}
+
+.app-navbar .navbar-item.selected {
+  color: #08100b;
+  background: #72f29c;
+  border-color: #72f29c;
+  box-shadow: 0 8px 24px #72f29c26;
+}
+
+.app-navbar .navbar-item.selected:hover {
+  color: #08100b;
+  background: #8affad;
+  border-color: #8affad;
+}
+
+.app-navbar .navbar-item:focus-visible,
+.navbar-brand:focus-visible {
+  outline: 2px solid #72f29c;
+  outline-offset: 3px;
+}
+
+.app-navbar .navbar-signout {
+  color: #d7dfd9;
+}
+
+.app-navbar .navbar-workouts {
+  position: relative;
+  display: block;
+}
+
+.navbar-chevron {
+  color: currentColor;
+  font-size: 0.72rem;
+  transition: transform 160ms ease;
+}
+
+.navbar-chevron.open {
+  transform: rotate(180deg);
+}
+
+.app-navbar .navbar-workouts-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  z-index: 1000;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  flex-wrap: nowrap !important;
+  gap: 6px;
+  width: 300px;
+  padding: 10px;
+  background: linear-gradient(145deg, #17261c, #0e1912);
+  border: 1px solid #ffffff24;
+  border-radius: 16px;
+  box-shadow: 0 24px 70px #00000099;
+  animation: navbarDropdownIn 160ms ease-out;
+}
+
+.app-navbar .navbar-workouts-menu .navbar-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  width: 100%;
+  padding: 14px 15px;
+  text-align: left;
+}
+
+.app-navbar .navbar-workouts-menu .navbar-item strong,
+.app-navbar .navbar-workouts-menu .navbar-item small {
+  display: block;
+}
+
+.app-navbar .navbar-workouts-menu .navbar-item strong {
+  color: inherit;
+  font-size: 0.98rem;
+}
+
+.app-navbar .navbar-workouts-menu .navbar-item small {
+  color: #9aaba0;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.app-navbar .navbar-workouts-menu .navbar-item.selected small {
+  color: #173326;
+}
+
+@keyframes navbarDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 760px) {
+  .app-navbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .app-navbar .navbar-links {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .app-navbar .navbar-workouts-menu {
+    left: 0;
+    width: min(300px, calc(100vw - 48px));
+  }
+}

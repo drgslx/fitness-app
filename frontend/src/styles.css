@@ -130,3 +130,46 @@ form button {
 .error {
   color: #ff8585;
 }
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.hero-actions .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 18px;
+  border: 1px solid #72f29c;
+  border-radius: 10px;
+  background: transparent;
+  color: #72f29c;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.hero-actions .button:hover {
+  background: #72f29c;
+  color: #09100c;
+  transform: translateY(-2px);
+}
+
+.hero-actions .button:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .hero-actions {
+    flex-direction: column;
+  }
+
+  .hero-actions .button {
+    width: 100%;
+  }
+}
