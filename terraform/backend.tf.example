@@ -1,0 +1,4 @@
+# Rename this file to backend.tf only after creating the bootstrap bucket.
+terraform {
+  backend "gcs" {}
+}

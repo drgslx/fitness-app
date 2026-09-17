@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sport-api
+  {{- if .Values.serviceAccount.gcpEmail }}
+  annotations:
+    iam.gke.io/gcp-service-account: {{ .Values.serviceAccount.gcpEmail | quote }}
+  {{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: sport-api}
+spec:
+  replicas: {{ .Values.api.replicas }}
+  {{- if eq .Values.storage.backend "local" }}
+  strategy: {type: Recreate}
+  {{- end }}
+  selector: {matchLabels: {app: sport-api}}
+  template:
+    metadata: {labels: {app: sport-api}}
+    spec:
+      serviceAccountName: sport-api
+      securityContext: {fsGroup: 10001, runAsNonRoot: true, runAsUser: 10001}
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports: [{containerPort: 8000}]
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: ["ALL"]}}
+          envFrom: [{secretRef: {name: {{ .Values.database.existingSecret }}}}]
+          env:
+            - {name: UPLOAD_DIR, value: /data/uploads}
+            - {name: FIREBASE_PROJECT_ID, value: {{ .Values.firebase.projectId | quote }}}
+            - {name: STORAGE_BACKEND, value: {{ .Values.storage.backend | quote }}}
+            - {name: GCS_BUCKET, value: {{ .Values.storage.bucket | quote }}}
+            {{- if .Values.firebase.credentialsSecret }}
+            - {name: GOOGLE_APPLICATION_CREDENTIALS, value: /run/firebase/firebase-admin.json}
+            {{- end }}
+          readinessProbe: {httpGet: {path: /readyz, port: 8000}, initialDelaySeconds: 5}
+          livenessProbe: {httpGet: {path: /healthz, port: 8000}, initialDelaySeconds: 15}
+          startupProbe: {httpGet: {path: /healthz, port: 8000}, periodSeconds: 5, failureThreshold: 30}
+          resources: {requests: {cpu: 100m, memory: 192Mi}, limits: {cpu: "1", memory: 512Mi}}
+          volumeMounts:
+            - {name: uploads, mountPath: /data/uploads}
+            {{- if .Values.firebase.credentialsSecret }}
+            - {name: firebase-admin, mountPath: /run/firebase, readOnly: true}
+            {{- end }}
+      volumes:
+        - name: uploads
+          {{- if eq .Values.storage.backend "local" }}
+          persistentVolumeClaim: {claimName: sport-uploads}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.firebase.credentialsSecret }}
+        - name: firebase-admin
+          secret: {secretName: {{ .Values.firebase.credentialsSecret | quote }}}
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: sport-api}
+spec: {selector: {app: sport-api}, ports: [{port: 8000, targetPort: 8000}]}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: api}
+spec: {selector: {app: sport-api}, ports: [{port: 8000, targetPort: 8000}]}

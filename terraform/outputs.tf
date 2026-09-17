@@ -1,0 +1,13 @@
+output "project_id" { value = var.project_id }
+output "zone" { value = var.zone }
+output "region" { value = var.region }
+output "gke_cluster" { value = module.gke.cluster_name }
+output "db_private_ip" { value = module.database_vm.private_ip }
+output "db_secret" { value = module.database_vm.secret_id }
+output "image_bucket" { value = module.storage.bucket_name }
+output "api_service_account" { value = google_service_account.api.email }
+output "registry" { value = "${var.region}-docker.pkg.dev/${var.project_id}/sport-platform" }
+output "web_ip" { value = google_compute_global_address.web.address }
+output "web_ip_name" { value = google_compute_global_address.web.name }
+output "github_provider" { value = try(google_iam_workload_identity_pool_provider.github[0].name, "") }
+output "github_service_account" { value = try(google_service_account.deployer[0].email, "") }

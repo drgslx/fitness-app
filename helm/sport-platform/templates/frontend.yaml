@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: sport-frontend }
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector: { matchLabels: { app: sport-frontend } }
+  template:
+    metadata: { labels: { app: sport-frontend } }
+    spec:
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports: [{ containerPort: 80 }]
+          readinessProbe: { httpGet: { path: /, port: 80 }, initialDelaySeconds: 3 }
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 200m, memory: 128Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: sport-frontend }
+spec:
+  type: {{ .Values.frontend.serviceType }}
+  selector: {app: sport-frontend}
+  ports:
+    - port: 80
+      targetPort: 80
+      {{- if eq .Values.frontend.serviceType "NodePort" }}
+      nodePort: {{ .Values.frontend.nodePort }}
+      {{- end }}

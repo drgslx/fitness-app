@@ -1,0 +1,33 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata: {name: sport-https}
+spec:
+  redirectToHttps:
+    enabled: true
+    responseCodeName: PERMANENT_REDIRECT
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata: {name: {{ required "certificateName required" .Values.ingress.certificateName }}}
+spec:
+  domains: [{{ required "host required" .Values.ingress.host | quote }}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sport-platform
+  annotations:
+    kubernetes.io/ingress.class: gce
+    networking.gke.io/v1beta1.FrontendConfig: sport-https
+    networking.gke.io/managed-certificates: {{ .Values.ingress.certificateName | quote }}
+    kubernetes.io/ingress.global-static-ip-name: {{ .Values.ingress.staticIpName | quote }}
+spec:
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: sport-frontend, port: {number: 80}}}
+{{- end }}

@@ -1,0 +1,104 @@
+name: Deploy GKE
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sport-gke-deployment
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: gcp-lab
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_ZONE: ${{ vars.GCP_ZONE }}
+      GKE_CLUSTER: sport-platform
+      DB_HOST: ${{ vars.DB_HOST }}
+      DB_SECRET: sport-postgres-password
+      IMAGE_BUCKET: ${{ vars.IMAGE_BUCKET }}
+      API_SERVICE_ACCOUNT: ${{ vars.API_SERVICE_ACCOUNT }}
+      FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+      FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+      WEB_HOST: ${{ vars.WEB_HOST }}
+      WEB_IP_NAME: sport-web-ip
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate required configuration
+        shell: bash
+        run: |
+          for name in GCP_PROJECT GCP_REGION GCP_ZONE DB_HOST IMAGE_BUCKET API_SERVICE_ACCOUNT FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID FIREBASE_APP_ID WEB_HOST; do
+            if [ -z "${!name}" ]; then echo "::error::Missing variable $name"; exit 1; fi
+          done
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: sport-platform
+          location: ${{ vars.GCP_ZONE }}
+          project_id: ${{ vars.GCP_PROJECT }}
+      - uses: azure/setup-helm@v4.3.0
+        with: {version: "v3.17.3"}
+      - name: Build and push immutable release images
+        shell: bash
+        run: |
+          registry="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/sport-platform"
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          docker build -t "$registry/api:$GITHUB_SHA" backend
+          docker build -t "$registry/frontend:$GITHUB_SHA" \
+            --build-arg VITE_API_URL=/api/v1 \
+            --build-arg VITE_FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+            --build-arg VITE_FIREBASE_AUTH_DOMAIN="$FIREBASE_AUTH_DOMAIN" \
+            --build-arg VITE_FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+            --build-arg VITE_FIREBASE_APP_ID="$FIREBASE_APP_ID" frontend
+          docker push "$registry/api:$GITHUB_SHA"
+          docker push "$registry/frontend:$GITHUB_SHA"
+      - name: Configure database connection without logging the password
+        run: python3 scripts/configure_cluster.py --cloud
+      - name: Deploy with Helm and wait for readiness
+        shell: bash
+        run: |
+          registry="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/sport-platform"
+          helm upgrade --install sport helm/sport-platform --namespace sport-platform \
+            --atomic --wait --timeout 10m \
+            --set-string api.image.repository="$registry/api" \
+            --set-string frontend.image.repository="$registry/frontend" \
+            --set-string api.image.tag="$GITHUB_SHA" \
+            --set-string frontend.image.tag="$GITHUB_SHA" \
+            --set-string firebase.projectId="$FIREBASE_PROJECT_ID" \
+            --set-string serviceAccount.gcpEmail="$API_SERVICE_ACCOUNT" \
+            --set storage.backend=gcs \
+            --set-string storage.bucket="$IMAGE_BUCKET" \
+            --set ingress.enabled=true \
+            --set-string ingress.host="$WEB_HOST" \
+            --set ingress.certificateName=sport-cert \
+            --set-string ingress.staticIpName="$WEB_IP_NAME"
+          kubectl rollout status deployment/sport-api -n sport-platform --timeout=180s
+          kubectl rollout status deployment/sport-frontend -n sport-platform --timeout=180s
+      - name: Internal smoke test
+        shell: bash
+        run: |
+          kubectl port-forward service/sport-frontend 18080:80 -n sport-platform >/tmp/port-forward.log 2>&1 &
+          forward_pid=$!
+          trap 'kill "$forward_pid" || true' EXIT
+          curl --fail --retry 15 --retry-connrefused --retry-delay 2 http://127.0.0.1:18080/api/v1/articles
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods,jobs -n sport-platform || true
+          kubectl get events -n sport-platform --sort-by=.lastTimestamp || true

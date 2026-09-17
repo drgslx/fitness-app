@@ -1,0 +1,7 @@
+project_id = "your-project-id"
+region     = "europe-west1"
+zone       = "europe-west1-b"
+# Fill only at the final GitHub Actions stage:
+github_repository    = ""
+github_repository_id = ""
+deletion_protection  = true

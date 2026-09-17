@@ -1,0 +1,44 @@
+#!/bin/bash
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y docker.io python3
+systemctl enable --now docker
+disk=/dev/disk/by-id/google-sport-postgres-data
+if ! blkid "$disk"; then
+  mkfs.ext4 -F "$disk"
+fi
+mkdir -p /mnt/sport-db
+if ! grep -q '/mnt/sport-db' /etc/fstab; then
+  printf 'UUID=%s /mnt/sport-db ext4 defaults 0 2\n' "$(blkid -s UUID -o value "$disk")" >> /etc/fstab
+fi
+if ! mountpoint -q /mnt/sport-db; then mount "$disk" /mnt/sport-db; fi
+mkdir -p /mnt/sport-db/pgdata
+install -d -m 700 /etc/sport
+mkdir -p /etc/systemd/system/docker.service.d
+printf '[Unit]\nRequiresMountsFor=/mnt/sport-db\n' > /etc/systemd/system/docker.service.d/sport-mount.conf
+systemctl daemon-reload
+python3 - <<'PY'
+import base64, json, os, time, urllib.request
+metadata = urllib.request.Request("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", headers={"Metadata-Flavor":"Google"})
+for attempt in range(30):
+    try:
+        token = json.load(urllib.request.urlopen(metadata, timeout=10))["access_token"]
+        request = urllib.request.Request("https://secretmanager.googleapis.com/v1/projects/${project_id}/secrets/${secret_id}/versions/latest:access", headers={"Authorization":"Bearer "+token})
+        data = json.load(urllib.request.urlopen(request, timeout=10))
+        fd = os.open("/etc/sport/password", os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0o600)
+        with os.fdopen(fd,"wb") as stream: stream.write(base64.b64decode(data["payload"]["data"]))
+        break
+    except Exception:
+        if attempt == 29: raise
+        time.sleep(10)
+PY
+if docker container inspect sport-postgres >/dev/null 2>&1; then
+  docker start sport-postgres
+else
+  docker run -d --name sport-postgres --restart unless-stopped -p 5432:5432 \
+    -e POSTGRES_DB=sportdb -e POSTGRES_USER=sport \
+    -e POSTGRES_PASSWORD_FILE=/run/secrets/password \
+    -v /etc/sport/password:/run/secrets/password:ro \
+    -v /mnt/sport-db/pgdata:/var/lib/postgresql/data postgres:16-alpine
+fi

@@ -1,0 +1,20 @@
+import {test,expect} from "@playwright/test";
+test("article navigation, refresh, back link and visitor permissions",async({page})=>{
+  const article={id:42,slug:"recuperare",title:"Recuperare după sport",summary:"Un rezumat pentru card.",content:"Textul integral este disponibil pe pagina individuală.",created_at:"2026-09-16T10:00:00Z",images:[]};
+  await page.route("**/api/v1/articles",r=>r.fulfill({json:[article]}));
+  await page.route("**/api/v1/articles/recuperare",r=>r.fulfill({json:article}));
+  await page.goto("/articles");
+  await expect(page.getByText(article.content)).toHaveCount(0);
+  await page.getByRole("heading",{name:article.title}).click();
+  await expect(page).toHaveURL(/\/articles\/recuperare$/);
+  await expect(page.getByText(article.content)).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(article.content)).toBeVisible();
+  await page.getByRole("link",{name:"← Înapoi la toate articolele"}).first().click();
+  await expect(page).toHaveURL(/\/articles$/);
+  await expect(page.getByRole("link",{name:"Admin",exact:true})).toHaveCount(0);
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/workouts");
+  await expect(page).toHaveURL(/\/login$/);
+});

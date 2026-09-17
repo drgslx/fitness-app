@@ -1,0 +1,4 @@
+apiVersion: v2
+name: sport-local-db
+version: 0.1.0
+description: PostgreSQL for local learning only

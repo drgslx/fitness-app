@@ -1,0 +1,26 @@
+api:
+  image: {repository: sport-api, tag: "0.3.0", pullPolicy: IfNotPresent}
+  replicas: 1
+frontend:
+  image: {repository: sport-frontend, tag: "0.3.0", pullPolicy: IfNotPresent}
+  replicas: 1
+  serviceType: NodePort
+  nodePort: 30080
+database:
+  existingSecret: sport-db
+firebase:
+  projectId: ""
+  credentialsSecret: ""
+serviceAccount:
+  gcpEmail: ""
+storage:
+  backend: local
+  bucket: ""
+  size: 2Gi
+migrations:
+  enabled: true
+ingress:
+  enabled: false
+  host: ""
+  certificateName: ""
+  staticIpName: ""
