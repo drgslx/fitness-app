@@ -8,30 +8,23 @@ function navItemClass({ isActive }) {
   return `navbar-item${isActive ? " selected" : ""}`;
 }
 
-function WorkoutsMenu() {
+function FeatureMenu({ label, pathPrefix, items }) {
   const location = useLocation();
   const containerRef = useRef(null);
   const [open, setOpen] = useState(false);
-  const workoutsSelected = location.pathname.startsWith("/workouts");
+  const selected = location.pathname.startsWith(pathPrefix);
 
-  useEffect(() => {
-    setOpen(false);
-  }, [location.pathname]);
+  useEffect(() => setOpen(false), [location.pathname]);
 
   useEffect(() => {
     function closeOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setOpen(false);
-      }
+      if (containerRef.current && !containerRef.current.contains(event.target)) setOpen(false);
     }
-
     function closeWithEscape(event) {
       if (event.key === "Escape") setOpen(false);
     }
-
     document.addEventListener("mousedown", closeOutside);
     document.addEventListener("keydown", closeWithEscape);
-
     return () => {
       document.removeEventListener("mousedown", closeOutside);
       document.removeEventListener("keydown", closeWithEscape);
@@ -42,28 +35,23 @@ function WorkoutsMenu() {
     <div className="navbar-workouts" ref={containerRef}>
       <button
         type="button"
-        className={`navbar-item navbar-workouts-trigger${
-          workoutsSelected ? " selected" : ""
-        }`}
+        className={`navbar-item navbar-workouts-trigger${selected ? " selected" : ""}`}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((current) => !current)}
       >
-        Antrenamente
+        {label}
         <span className={`navbar-chevron${open ? " open" : ""}`}>v</span>
       </button>
 
       {open && (
         <div className="navbar-workouts-menu" role="menu">
-          <NavLink to="/workouts/sessions" className={navItemClass} role="menuitem">
-            <strong>Sesiuni</strong>
-            <small>Planuri si istoric</small>
-          </NavLink>
-
-          <NavLink to="/workouts/catalog" className={navItemClass} role="menuitem">
-            <strong>Catalog sporturi</strong>
-            <small>Sporturi si exercitii aferente</small>
-          </NavLink>
+          {items.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navItemClass} role="menuitem">
+              <strong>{item.title}</strong>
+              <small>{item.description}</small>
+            </NavLink>
+          ))}
         </div>
       )}
     </div>
@@ -75,39 +63,38 @@ export default function Navbar() {
 
   return (
     <nav className="app-navbar">
-      <Link className="navbar-brand" to="/">
-        ATHLETICA
-      </Link>
+      <Link className="navbar-brand" to="/">ATHLETICA</Link>
 
       <div className="navbar-links">
-        <NavLink to="/articles" className={navItemClass}>
-          Articole
-        </NavLink>
+        <NavLink to="/articles" className={navItemClass}>Articole</NavLink>
 
-        <WorkoutsMenu />
+        <FeatureMenu
+          label="Antrenamente"
+          pathPrefix="/workouts"
+          items={[
+            { to: "/workouts/sessions", title: "Sesiuni", description: "Planuri si istoric" },
+            { to: "/workouts/catalog", title: "Catalog sporturi", description: "Sporturi si exercitii aferente" },
+          ]}
+        />
 
-        <NavLink to="/nutrition" className={navItemClass}>
-          Alimentatie
-        </NavLink>
+        <FeatureMenu
+          label="Alimentatie"
+          pathPrefix="/nutrition"
+          items={[
+            { to: "/nutrition/journal", title: "Jurnal nutritional", description: "Jurnal, catalog, obiective si rapoarte" },
+            { to: "/nutrition/recipes", title: "Retete", description: "Ingrediente, portii si gramaj gatit" },
+            { to: "/nutrition/foods/new", title: "Adauga aliment", description: "Creeaza un aliment in catalog" },
+          ]}
+        />
 
-        {admin && (
-          <NavLink to="/admin" className={navItemClass}>
-            Admin
-          </NavLink>
-        )}
+        {admin && <NavLink to="/admin" className={navItemClass}>Admin</NavLink>}
 
         {user ? (
-          <button
-            type="button"
-            className="navbar-item navbar-signout"
-            onClick={() => signOut(auth)}
-          >
+          <button type="button" className="navbar-item navbar-signout" onClick={() => signOut(auth)}>
             Deconectare
           </button>
         ) : (
-          <NavLink to="/login" className={navItemClass}>
-            Autentificare
-          </NavLink>
+          <NavLink to="/login" className={navItemClass}>Autentificare</NavLink>
         )}
       </div>
     </nav>

@@ -10,15 +10,16 @@ import WorkoutsPage from "./pages/WorkoutsPage";
 import WorkoutSessionsPage from "./pages/WorkoutSessionsPage";
 import SportsCatalogPage from "./pages/SportsCatalogPage";
 import NutritionPage from "./pages/NutritionPage";
+import NutritionJournalPage from "./pages/NutritionJournalPage";
+import FoodFormPage from "./pages/FoodFormPage";
+import RecipesPage from "./pages/RecipesPage";
 import HomePage from "./pages/HomePage";
-
 
 function SignedIn({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <main>Se verifica sesiunea...</main>;
   return user ? children : <Navigate to="/login" replace />;
 }
-
 
 function AdminRoute() {
   const { user, admin, loading } = useAuth();
@@ -31,7 +32,6 @@ function Layout() {
   return (
     <>
       <Navbar />
-
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/articles" element={<ArticlesPage />} />
@@ -39,34 +39,26 @@ function Layout() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin" element={<AdminRoute />} />
 
-        <Route
-          path="/workouts"
-          element={<SignedIn><WorkoutsPage /></SignedIn>}
-        >
+        <Route path="/workouts" element={<SignedIn><WorkoutsPage /></SignedIn>}>
           <Route index element={<Navigate to="/workouts/sessions" replace />} />
           <Route path="sessions" element={<WorkoutSessionsPage />} />
           <Route path="catalog" element={<SportsCatalogPage />} />
         </Route>
 
-        <Route
-          path="/nutrition"
-          element={<SignedIn><NutritionPage /></SignedIn>}
-        />
-        <Route
-          path="*"
-          element={<main>Pagina nu exista. <Link to="/articles">Toate articolele</Link></main>}
-        />
+        <Route path="/nutrition" element={<SignedIn><NutritionPage /></SignedIn>}>
+          <Route index element={<Navigate to="/nutrition/journal" replace />} />
+          <Route path="journal" element={<NutritionJournalPage />} />
+          <Route path="foods/new" element={<FoodFormPage />} />
+          <Route path="foods/:foodId/edit" element={<FoodFormPage />} />
+          <Route path="recipes" element={<RecipesPage />} />
+        </Route>
+
+        <Route path="*" element={<main>Pagina nu exista. <Link to="/">Acasa</Link></main>} />
       </Routes>
     </>
   );
 }
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Layout />
-      </AuthProvider>
-    </BrowserRouter>
-  );
+  return <BrowserRouter><AuthProvider><Layout /></AuthProvider></BrowserRouter>;
 }
