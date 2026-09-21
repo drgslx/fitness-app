@@ -339,4 +339,11 @@ def report(start: date, end: date, user=Depends(current_user), db: Session = Dep
         week["daily_average_all_days"] = round(week["calories"] / week["days_in_range"], 2)
         week["daily_average_logged_days"] = round(week["calories"] / week["logged_days"], 2) if week["logged_days"] else None
         week["nutrients"] = {key: round(value, 2) for key, value in week["nutrients"].items()}
-    return {"days": list(days.values()), "weeks": list(weeks.values())}
+    return {
+    "days": [
+        total
+        for total in days.values()
+        if total["entries"] > 0
+    ],
+    "weeks": list(weeks.values()),
+}
