@@ -65,6 +65,21 @@ class WorkoutLog(Base):
     day: Mapped[date] = mapped_column(Date, index=True)
     snapshot: Mapped[dict] = mapped_column(JSON)
     completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    
+class WorkoutTemplate(Base):
+    __tablename__ = "workout_templates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    name: Mapped[str] = mapped_column(String(160))
+    sport: Mapped[str] = mapped_column(String(80))
+    notes: Mapped[str] = mapped_column(String(2000), default="")
+    exercises: Mapped[list] = mapped_column(JSON)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
 
 class Nutrient(Base):
     __tablename__ = "nutrients"

@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.core.security import current_user, require_admin
 from app.db.session import get_db
-from app.models.tracking import Workout, WorkoutLog, Nutrient, Food, DiaryEntry, GoalType, NutritionGoal
+from app.models.tracking import Workout, WorkoutLog, Nutrient, Food, DiaryEntry, GoalType, NutritionGoal, Workout, WorkoutTemplate
 from app.schemas.tracking import WorkoutIn, NutrientIn, FoodIn, EntryIn, GoalTypeIn, GoalIn
 from sqlalchemy import func, select
 from app.models.recipe import RecipeDiaryEntry
@@ -18,6 +18,7 @@ from app.models.tracking import (
     NutritionGoal,
     SportType,
     ExerciseDefinition,
+    WorkoutTemplate,
 )
 from app.schemas.tracking import (
     WorkoutIn,
@@ -28,9 +29,11 @@ from app.schemas.tracking import (
     GoalIn,
     SportTypeIn,
     ExerciseDefinitionIn,
+    WorkoutTemplateIn,
 )
 
 router = APIRouter(tags=["tracking"])
+SYSTEM_CATALOG_UID = "__system__"
 def row(item):
     return {column.name: getattr(item, column.name) for column in item.__table__.columns}
 def owner(db, model, item_id, user):
@@ -53,13 +56,39 @@ def sport_types(
     items = db.scalars(
         select(SportType)
         .where(
-            SportType.user_id == user["uid"],
+            SportType.user_id.in_([
+                user["uid"],
+                SYSTEM_CATALOG_UID,
+            ]),
             SportType.is_active.is_(True),
         )
-        .order_by(SportType.name)
+        .order_by(SportType.user_id, SportType.name)
     ).all()
 
-    return [row(item) for item in items]
+    return [
+        {
+            **row(item),
+            "is_system": item.user_id == SYSTEM_CATALOG_UID,
+        }
+        for item in items
+    ]
+
+def readable_sport(db, sport_id, user):
+    sport = db.scalar(
+        select(SportType).where(
+            SportType.id == sport_id,
+            SportType.user_id.in_([
+                user["uid"],
+                SYSTEM_CATALOG_UID,
+            ]),
+            SportType.is_active.is_(True),
+        )
+    )
+
+    if sport is None:
+        raise HTTPException(404, "Sport not found")
+
+    return sport
 
 
 @router.post("/sport-types", status_code=201)
@@ -70,7 +99,7 @@ def add_sport_type(
 ):
     existing = db.scalar(
         select(SportType).where(
-            SportType.user_id == user["uid"],
+            SportType.user_id.in_([user["uid"], "__system__"]),
             func.lower(SportType.name) == data.name.lower(),
         )
     )
@@ -99,24 +128,34 @@ def delete_sport_type(
 
 
 @router.get("/sport-types/{sport_id}/exercises")
+@router.get("/sport-types/{sport_id}/exercises")
 def exercise_definitions(
     sport_id: int,
     user=Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    owner(db, SportType, sport_id, user)
+    readable_sport(db, sport_id, user)
 
     items = db.scalars(
         select(ExerciseDefinition)
         .where(
             ExerciseDefinition.sport_type_id == sport_id,
-            ExerciseDefinition.user_id == user["uid"],
+            ExerciseDefinition.user_id.in_([
+                user["uid"],
+                SYSTEM_CATALOG_UID,
+            ]),
             ExerciseDefinition.is_active.is_(True),
         )
-        .order_by(ExerciseDefinition.name)
+        .order_by(ExerciseDefinition.user_id, ExerciseDefinition.name)
     ).all()
 
-    return [row(item) for item in items]
+    return [
+        {
+            **row(item),
+            "is_system": item.user_id == SYSTEM_CATALOG_UID,
+        }
+        for item in items
+    ]
 
 
 @router.post("/sport-types/{sport_id}/exercises", status_code=201)
@@ -126,7 +165,7 @@ def add_exercise_definition(
     user=Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    owner(db, SportType, sport_id, user)
+    readable_sport(db, sport_id, user)
 
     existing = db.scalar(
         select(ExerciseDefinition).where(
@@ -155,12 +194,20 @@ def delete_exercise_definition(
     user=Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    exercise = owner(
-        db,
-        ExerciseDefinition,
-        exercise_id,
-        user,
-    )
+    exercise = db.get(ExerciseDefinition, exercise_id)
+
+    if exercise is None:
+        raise HTTPException(404, "Exercise not found")
+
+    is_system_exercise = exercise.user_id == SYSTEM_CATALOG_UID
+    is_owner = exercise.user_id == user["uid"]
+    is_admin = user.get("admin") is True
+
+    if is_system_exercise and not is_admin:
+        raise HTTPException(403, "Only an admin can modify standard exercises")
+
+    if not is_system_exercise and not is_owner and not is_admin:
+        raise HTTPException(403, "Only the owner or an admin can modify this exercise")
 
     exercise.is_active = False
     db.commit()
@@ -177,9 +224,46 @@ def workouts(start: date, end: date, user=Depends(current_user), db: Session = D
     return [dict(row(plan), completed=plan.id in completed) for plan in plans]
 
 @router.post("/workouts", status_code=201)
-def add_workout(data: WorkoutIn, user=Depends(current_user), db: Session = Depends(get_db)):
+def add_workout(
+    data: WorkoutIn,
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
     values = data.model_dump()
-    return save(db, Workout(user_id=user["uid"], **values))
+
+    save_as_template = values.pop("save_as_template", False)
+    template_name = values.pop("template_name", None)
+
+    workout = Workout(
+        user_id=user["uid"],
+        **values,
+    )
+
+    db.add(workout)
+
+    if save_as_template:
+        final_template_name = (template_name or values["title"]).strip()
+
+        if not final_template_name:
+            raise HTTPException(
+                status_code=422,
+                detail="Numele șablonului este obligatoriu",
+            )
+
+        template = WorkoutTemplate(
+            user_id=user["uid"],
+            name=final_template_name,
+            sport=values["sport"],
+            notes=values["notes"],
+            exercises=values["exercises"],
+        )
+
+        db.add(template)
+
+    db.commit()
+    db.refresh(workout)
+
+    return workout
 
 @router.put("/workouts/{item_id}")
 def edit_workout(item_id: int, data: WorkoutIn, user=Depends(current_user), db: Session = Depends(get_db)):
@@ -209,6 +293,73 @@ def uncomplete(item_id: int, user=Depends(current_user), db: Session = Depends(g
     log = db.scalar(select(WorkoutLog).where(WorkoutLog.workout_id == item_id, WorkoutLog.user_id == user["uid"]))
     if log:
         db.delete(log); db.commit()
+        
+@router.get("/workout-templates")
+def list_workout_templates(
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    templates = db.scalars(
+        select(WorkoutTemplate)
+        .where(
+            WorkoutTemplate.user_id == user["uid"],
+            WorkoutTemplate.is_active.is_(True),
+        )
+        .order_by(WorkoutTemplate.name)
+    ).all()
+
+    return [
+        {
+            "id": template.id,
+            "name": template.name,
+            "sport": template.sport,
+            "notes": template.notes,
+            "exercises": template.exercises,
+        }
+        for template in templates
+    ]
+
+
+@router.post("/workout-templates", status_code=201)
+def create_workout_template(
+    payload: WorkoutTemplateIn,
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    template = WorkoutTemplate(
+        user_id=user["uid"],
+        **payload.model_dump(),
+    )
+
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+
+    return {
+        "id": template.id,
+        "name": template.name,
+        "sport": template.sport,
+        "notes": template.notes,
+        "exercises": template.exercises,
+    }
+
+
+@router.delete("/workout-templates/{template_id}", status_code=204)
+def delete_workout_template(
+    template_id: int,
+    user=Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    template = db.get(WorkoutTemplate, template_id)
+
+    if template is None:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    if template.user_id != user["uid"] and not user.get("admin"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    template.is_active = False
+    db.commit()
 
 @router.get("/workout-history")
 def history(start: date, end: date, user=Depends(current_user), db: Session = Depends(get_db)):

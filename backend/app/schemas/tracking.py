@@ -56,6 +56,13 @@ class WorkoutIn(Input):
     sport: str = Field(min_length=1, max_length=80)
     notes: str = Field(default="", max_length=2000)
     exercises: list[Exercise] = Field(default_factory=list, max_length=100)
+    save_as_template: bool = False
+    template_name: str | None = Field(default=None, max_length=160)
+class WorkoutTemplateIn(Input):
+    name: str = Field(min_length=1, max_length=160)
+    sport: str = Field(min_length=1, max_length=80)
+    notes: str = Field(default="", max_length=2000)
+    exercises: list[Exercise] = Field(default_factory=list, max_length=100)
 class NutrientIn(Input):
     key: Key
     label: str = Field(min_length=1, max_length=100)
