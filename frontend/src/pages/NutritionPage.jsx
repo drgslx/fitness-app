@@ -9,6 +9,7 @@ export default function NutritionPage() {
 
       <div className="hero-actions">
         <NavLink className="button" to="/nutrition/journal">Jurnal nutritional</NavLink>
+        <NavLink className="button" to="/nutrition/recipes">Retete</NavLink>
         <NavLink className="button" to="/nutrition/foods/new">Adauga aliment</NavLink>
       </div>
 

@@ -82,6 +82,7 @@ export default function Navbar() {
           pathPrefix="/nutrition"
           items={[
             { to: "/nutrition/journal", title: "Jurnal nutritional", description: "Jurnal, catalog, obiective si rapoarte" },
+            { to: "/nutrition/recipes", title: "Retete", description: "Ingrediente, portii si gramaj gatit" },
             { to: "/nutrition/foods/new", title: "Adauga aliment", description: "Creeaza un aliment in catalog" },
           ]}
         />

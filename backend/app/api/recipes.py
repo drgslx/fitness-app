@@ -6,7 +6,7 @@ from app.core.security import current_user
 from app.db.session import get_db
 from app.models.recipe import Recipe, RecipeIngredient, RecipeDiaryEntry
 from app.models.tracking import Food
-from app.schemas.recipes import RecipeIn, RecipeDiaryIn
+from app.schemas.recipe import RecipeIn, RecipeDiaryIn
 
 router = APIRouter(tags=["recipes"])
 

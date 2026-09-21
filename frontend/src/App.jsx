@@ -12,6 +12,7 @@ import SportsCatalogPage from "./pages/SportsCatalogPage";
 import NutritionPage from "./pages/NutritionPage";
 import NutritionJournalPage from "./pages/NutritionJournalPage";
 import FoodFormPage from "./pages/FoodFormPage";
+import RecipesPage from "./pages/RecipesPage";
 import HomePage from "./pages/HomePage";
 
 function SignedIn({ children }) {
@@ -49,6 +50,7 @@ function Layout() {
           <Route path="journal" element={<NutritionJournalPage />} />
           <Route path="foods/new" element={<FoodFormPage />} />
           <Route path="foods/:foodId/edit" element={<FoodFormPage />} />
+          <Route path="recipes" element={<RecipesPage />} />
         </Route>
 
         <Route path="*" element={<main>Pagina nu exista. <Link to="/">Acasa</Link></main>} />
