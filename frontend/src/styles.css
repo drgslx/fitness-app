@@ -728,15 +728,54 @@ tbody tr:last-child td {
 }
 
 .sessions-table-panel {
-  gap: 1.25rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sessions-table-panel .table-wrapper,
+.sessions-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .sessions-table {
-  min-width: 980px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  table-layout: fixed;
 }
 
+.sessions-table th,
 .sessions-table td {
+  min-width: 0;
+  height: auto;
+  text-align: left;
   vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.session-date-cell,
+.session-name-cell,
+.session-sport-cell,
+.session-status-cell,
+.session-actions-cell {
+  height: auto;
+  text-align: left;
+  vertical-align: top;
+}
+
+.session-date-cell > *,
+.session-name-cell > *,
+.session-sport-cell > *,
+.session-status-cell > *,
+.session-actions-cell > * {
+  margin-top: 0;
 }
 
 .session-table-notes {
@@ -744,68 +783,156 @@ tbody tr:last-child td {
   margin-top: 0.35rem;
   color: var(--muted);
   font-weight: 400;
+  line-height: 1.45;
+}
+
+.session-sport-cell {
+  padding-right: 0.5rem;
+  color: #dce8e1;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .session-table-exercises {
   display: grid;
-  gap: 0.3rem;
-  min-width: 230px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  gap: 0.45rem;
   margin: 0;
-  padding-left: 1.1rem;
+  padding: 0;
+  list-style: none;
 }
 
-.session-table-exercises li {
-  line-height: 1.45;
+.session-table-exercises li,
+.session-exercise-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 0.25rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #ffffff12;
+  border-radius: 8px;
+  background: #111f17;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.session-table-exercises li strong,
+.session-exercise-item strong {
+  min-width: 0;
+  color: #e8eee9;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.session-table-exercises li span,
+.session-exercise-item span {
+  color: #adbbb2;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.session-table-exercises li small,
+.session-exercise-item small {
+  grid-column: 1 / -1;
+  color: #829087;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.session-row.completed td,
+.session-row-completed td {
+  background: #102419;
+  border-top-color: #72f29c66;
+  border-bottom-color: #72f29c66;
+  color: inherit;
+  text-decoration: none;
+}
+
+.session-row.completed td *,
+.session-row-completed td * {
+  text-decoration: none;
+}
+
+.session-row.completed td:first-child,
+.session-row-completed td:first-child {
+  border-left-color: #72f29c;
+  box-shadow: inset 4px 0 0 #72f29c;
+}
+
+.session-row.completed td:last-child,
+.session-row-completed td:last-child {
+  border-right-color: #72f29c66;
+}
+
+.session-row.completed:hover td,
+.session-row-completed:hover td {
+  background: #153020;
+}
+
+.session-row.completed .session-table-exercises li,
+.session-row-completed .session-table-exercises li,
+.session-row.completed .session-exercise-item,
+.session-row-completed .session-exercise-item {
+  border-color: #72f29c2f;
+  background: #153020;
 }
 
 .session-status {
   display: inline-flex;
-  padding: 0.35rem 0.65rem;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0.4rem 0.75rem;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .session-status.planned {
-  border: 1px solid #5f7167;
+  border: 1px solid #65756c;
   background: #18241d;
-  color: #c4d0c8;
+  color: #cbd5cf;
 }
 
 .session-status.completed {
-  border: 1px solid #72f29c55;
-  background: #173523;
-  color: var(--accent);
-}
-
-.session-row.completed td:not(.session-actions-cell) {
-  color: #718078;
-  text-decoration: line-through;
-  text-decoration-thickness: 2px;
-  text-decoration-color: #72f29c99;
-}
-
-.session-row.completed {
-  background: #0a130e;
-  opacity: 0.78;
-}
-
-.session-row.completed:hover {
-  opacity: 1;
+  border: 1px solid #72f29c;
+  background: #72f29c;
+  color: #07120b;
 }
 
 .session-table-actions {
   display: grid;
+  align-content: start;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   gap: 0.45rem;
-  min-width: 105px;
+  margin: 0;
 }
 
 .session-table-actions button {
   width: 100%;
+  min-width: 0;
   min-height: 36px;
-  padding: 0.5rem 0.7rem;
-  white-space: nowrap;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  white-space: normal;
 }
 
 input[type="date"] {
@@ -830,3 +957,61 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
   opacity: 0.85;
 }
+
+/* Latimile finale ale coloanelor */
+
+.sessions-table .column-date {
+  width: 12%;
+}
+
+.sessions-table .column-session {
+  width: 16%;
+}
+
+.sessions-table .column-sport {
+  width: 8%;
+}
+
+.sessions-table .column-exercises {
+  width: 37%;
+}
+
+.sessions-table .column-status {
+  width: 10%;
+}
+
+.sessions-table .column-actions {
+  width: 17%;
+}
+
+/* Fallback pentru tabelele care nu au colgroup in JSX. */
+.sessions-table th:nth-child(1),
+.sessions-table td:nth-child(1) {
+  width: 12%;
+}
+
+.sessions-table th:nth-child(2),
+.sessions-table td:nth-child(2) {
+  width: 16%;
+}
+
+.sessions-table th:nth-child(3),
+.sessions-table td:nth-child(3) {
+  width: 8%;
+}
+
+.sessions-table th:nth-child(4),
+.sessions-table td:nth-child(4) {
+  width: 37%;
+}
+
+.sessions-table th:nth-child(5),
+.sessions-table td:nth-child(5) {
+  width: 10%;
+}
+
+.sessions-table th:nth-child(6),
+.sessions-table td:nth-child(6) {
+  width: 17%;
+}
+
