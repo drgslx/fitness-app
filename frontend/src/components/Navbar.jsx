@@ -74,6 +74,7 @@ export default function Navbar() {
           items={[
             { to: "/workouts/sessions", title: "Sesiuni", description: "Planuri si istoric" },
             { to: "/workouts/catalog", title: "Catalog sporturi", description: "Sporturi si exercitii aferente" },
+            { to: "/workouts/sports/new", title: "Adauga sport", description: "Creeaza un nou sport in catalog" },
           ]}
         />
 
