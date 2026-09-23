@@ -14,6 +14,8 @@ import NutritionJournalPage from "./pages/NutritionJournalPage";
 import FoodFormPage from "./pages/FoodFormPage";
 import RecipesPage from "./pages/RecipesPage";
 import HomePage from "./pages/HomePage";
+import AddSportPage from "./pages/AddSportPage";
+import AddSessionPage from "./pages/AddSessionPage";
 
 function SignedIn({ children }) {
   const { user, loading } = useAuth();
@@ -39,13 +41,35 @@ function Layout() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin" element={<AdminRoute />} />
 
-        <Route path="/workouts" element={<SignedIn><WorkoutsPage /></SignedIn>}>
+        <Route
+          path="/workouts"
+          element={
+            <SignedIn>
+              <WorkoutsPage />
+            </SignedIn>
+          }
+        >
           <Route index element={<Navigate to="/workouts/sessions" replace />} />
+
           <Route path="sessions" element={<WorkoutSessionsPage />} />
+
+          <Route path="sessions/new" element={<AddSessionPage />} />
+
+          <Route path="sessions/:sessionId/edit" element={<AddSessionPage />} />
+
           <Route path="catalog" element={<SportsCatalogPage />} />
+
+          <Route path="sports/new" element={<AddSportPage />} />
         </Route>
 
-        <Route path="/nutrition" element={<SignedIn><NutritionPage /></SignedIn>}>
+        <Route
+          path="/nutrition"
+          element={
+            <SignedIn>
+              <NutritionPage />
+            </SignedIn>
+          }
+        >
           <Route index element={<Navigate to="/nutrition/journal" replace />} />
           <Route path="journal" element={<NutritionJournalPage />} />
           <Route path="foods/new" element={<FoodFormPage />} />
@@ -53,12 +77,25 @@ function Layout() {
           <Route path="recipes" element={<RecipesPage />} />
         </Route>
 
-        <Route path="*" element={<main>Pagina nu exista. <Link to="/">Acasa</Link></main>} />
+        <Route
+          path="*"
+          element={
+            <main>
+              Pagina nu exista. <Link to="/">Acasa</Link>
+            </main>
+          }
+        />
       </Routes>
     </>
   );
 }
 
 export default function App() {
-  return <BrowserRouter><AuthProvider><Layout /></AuthProvider></BrowserRouter>;
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Layout />
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }
