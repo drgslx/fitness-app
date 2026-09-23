@@ -3,6 +3,7 @@ import {
   Link,
   useLocation,
   useNavigate,
+  useSearchParams,
 } from "react-router-dom";
 import { api, send, localDate } from "../api/client";
 
@@ -47,7 +48,30 @@ export default function WorkoutSessionsPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [day, setDay] = useState(localDate());
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const requestedDay = searchParams.get("day");
+
+  const parsedDay = requestedDay ? new Date(`${requestedDay}T12:00:00`) : null;
+
+  const validDay =
+    requestedDay &&
+    /^\d{4}-\d{2}-\d{2}$/.test(requestedDay) &&
+    !Number.isNaN(parsedDay.getTime()) &&
+    localDate(parsedDay) === requestedDay;
+
+  const day = validDay ? requestedDay : localDate();
+
+  function setDay(value) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.set("day", value);
+        return next;
+      },
+      { replace: true }
+    );
+  }
   const [plans, setPlans] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -55,18 +79,16 @@ export default function WorkoutSessionsPage() {
   const range = useMemo(() => weekRange(day), [day]);
 
   async function load() {
-  const query = `?start=${range.start}&end=${range.end}`;
-  const plansResult = await api("/workouts" + query);
+    const query = `?start=${range.start}&end=${range.end}`;
+    const plansResult = await api("/workouts" + query);
 
-  setPlans(plansResult);
-}
+    setPlans(plansResult);
+  }
 
   useEffect(() => {
     setError("");
 
-    load().catch((currentError) =>
-      setError(currentError.message)
-    );
+    load().catch((currentError) => setError(currentError.message));
   }, [range.start, range.end]);
 
   async function action(operation) {
@@ -104,189 +126,184 @@ export default function WorkoutSessionsPage() {
   return (
     <div className="sessions-page">
       <section className="panel">
-  <div className="sessions-heading">
-    <div className="sessions-heading-content">
-      <span className="section-eyebrow">Planificare</span>
+        <div className="sessions-heading">
+          <div className="sessions-heading-content">
+            <span className="section-eyebrow">Planificare</span>
 
-      <h2>Sesiunile saptamanii</h2>
+            <h2>Sesiunile saptamanii</h2>
 
-      <p>
-        Consulta planurile si marcheaza antrenamentele executate.
-      </p>
-    </div>
+            <p>Consulta planurile si marcheaza antrenamentele executate.</p>
+          </div>
 
-    <Link
-      className="button add-session-button"
-      to="/workouts/sessions/new"
-    >
-      + Adauga sesiune
-    </Link>
-  </div>
+          <Link
+            className="button add-session-button"
+            to="/workouts/sessions/new"
+          >
+            + Adauga sesiune
+          </Link>
+        </div>
 
-  {location.state?.message && (
-    <p role="status">{location.state.message}</p>
-  )}
+        {location.state?.message && (
+          <p role="status">{location.state.message}</p>
+        )}
 
-  {error && (
-    <p className="error" role="alert">
-      {error}
-    </p>
-  )}
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
 
-  <div className="week-filter">
-    <label>
-      Saptamana care contine
-      <input
-        type="date"
-        required
-        value={day}
-        onChange={(event) => {
-          if (event.target.value) {
-            setDay(event.target.value);
-          }
-        }}
-      />
-    </label>
+        <div className="week-filter">
+          <label>
+            Saptamana care contine
+            <input
+              type="date"
+              required
+              value={day}
+              onChange={(event) => {
+                if (event.target.value) {
+                  setDay(event.target.value);
+                }
+              }}
+            />
+          </label>
 
-    <div className="week-range">
-      <span>Interval selectat</span>
+          <div className="week-range">
+            <span>Interval selectat</span>
 
-      <strong>
-        {range.start} - {range.end}
-      </strong>
-    </div>
-  </div>
-</section>
+            <strong>
+              {range.start} - {range.end}
+            </strong>
+          </div>
+        </div>
+      </section>
 
-   {!plans.length ? (
-  <section className="empty-state">
-    <h3>Nu ai sesiuni planificate</h3>
+      {!plans.length ? (
+        <section className="empty-state">
+          <h3>Nu ai sesiuni planificate</h3>
 
-    <p>
-      Nu exista planuri pentru saptamana selectata.
-    </p>
+          <p>Nu exista planuri pentru saptamana selectata.</p>
 
-    <Link className="button" to="/workouts/sessions/new">
-      Adauga prima sesiune
-    </Link>
-  </section>
-) : (
-  <section className="panel sessions-table-panel">
-    <div className="page-heading">
-      <div>
-        <span className="section-eyebrow">Program</span>
-        <h2>Planul saptamanii</h2>
-        <p>
-          Sesiunile executate sunt taiate din lista.
-        </p>
-      </div>
+          <Link className="button" to="/workouts/sessions/new">
+            Adauga prima sesiune
+          </Link>
+        </section>
+      ) : (
+        <section className="panel sessions-table-panel">
+          <div className="page-heading">
+            <div>
+              <span className="section-eyebrow">Program</span>
+              <h2>Planul saptamanii</h2>
+              <p>Sesiunile executate sunt taiate din lista.</p>
+            </div>
 
-      <span className="history-count">
-        {plans.filter((plan) => plan.completed).length} / {plans.length} executate
-      </span>
-    </div>
+            <span className="history-count">
+              {plans.filter((plan) => plan.completed).length} / {plans.length}{" "}
+              executate
+            </span>
+          </div>
 
-    <div className="table-wrapper">
-      <table className="sessions-table">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Sesiune</th>
-            <th>Sport</th>
-            <th>Exercitii</th>
-            <th>Status</th>
-            <th>Actiuni</th>
-          </tr>
-        </thead>
+          <div className="table-wrapper">
+            <table className="sessions-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Sesiune</th>
+                  <th>Sport</th>
+                  <th>Exercitii</th>
+                  <th>Status</th>
+                  <th>Actiuni</th>
+                </tr>
+              </thead>
 
-        <tbody>
-          {plans.map((plan) => (
-            <tr
-              key={plan.id}
-              className={plan.completed ? "session-row completed" : "session-row"}
-            >
-              <td>{plan.day}</td>
-
-              <td>
-                <strong>{plan.title}</strong>
-
-                {plan.notes && (
-                  <small className="session-table-notes">
-                    {plan.notes}
-                  </small>
-                )}
-              </td>
-
-              <td>{plan.sport}</td>
-
-              <td>
-                <ul className="session-table-exercises">
-                  {plan.exercises.map((exercise, index) => (
-                    <ExerciseSummary
-                      key={`${plan.id}-${index}`}
-                      exercise={exercise}
-                    />
-                  ))}
-                </ul>
-              </td>
-
-              <td>
-                <span
-                  className={
-                    plan.completed
-                      ? "session-status completed"
-                      : "session-status planned"
-                  }
-                >
-                  {plan.completed ? "Executat" : "Planificat"}
-                </span>
-              </td>
-
-              <td className="session-actions-cell">
-                <div className="session-table-actions">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      action(() =>
-                        send(
-                          `/workouts/${plan.id}/completion`,
-                          plan.completed ? "DELETE" : "PUT"
-                        )
-                      )
+              <tbody>
+                {plans.map((plan) => (
+                  <tr
+                    key={plan.id}
+                    className={
+                      plan.completed ? "session-row completed" : "session-row"
                     }
                   >
-                    {plan.completed ? "Anuleaza" : "Executat"}
-                  </button>
+                    <td>{plan.day}</td>
 
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    disabled={busy}
-                    onClick={() => editSession(plan)}
-                  >
-                    Editeaza
-                  </button>
+                    <td>
+                      <strong>{plan.title}</strong>
 
-                  <button
-                    type="button"
-                    className="danger-button"
-                    disabled={busy}
-                    onClick={() => deleteSession(plan)}
-                  >
-                    Sterge
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </section>
-)}
+                      {plan.notes && (
+                        <small className="session-table-notes">
+                          {plan.notes}
+                        </small>
+                      )}
+                    </td>
 
-      
+                    <td>{plan.sport}</td>
+
+                    <td>
+                      <ul className="session-table-exercises">
+                        {plan.exercises.map((exercise, index) => (
+                          <ExerciseSummary
+                            key={`${plan.id}-${index}`}
+                            exercise={exercise}
+                          />
+                        ))}
+                      </ul>
+                    </td>
+
+                    <td>
+                      <span
+                        className={
+                          plan.completed
+                            ? "session-status completed"
+                            : "session-status planned"
+                        }
+                      >
+                        {plan.completed ? "Executat" : "Planificat"}
+                      </span>
+                    </td>
+
+                    <td className="session-actions-cell">
+                      <div className="session-table-actions">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            action(() =>
+                              send(
+                                `/workouts/${plan.id}/completion`,
+                                plan.completed ? "DELETE" : "PUT"
+                              )
+                            )
+                          }
+                        >
+                          {plan.completed ? "Anuleaza" : "Executat"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={busy}
+                          onClick={() => editSession(plan)}
+                        >
+                          Editeaza
+                        </button>
+
+                        <button
+                          type="button"
+                          className="danger-button"
+                          disabled={busy}
+                          onClick={() => deleteSession(plan)}
+                        >
+                          Sterge
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
