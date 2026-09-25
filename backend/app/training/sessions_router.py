@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -86,12 +87,36 @@ def edit_workout(
     db: Session = Depends(get_db),
 ):
     plan = owned(db, Workout, item_id, user)
+    save_as_template = data.save_as_template
+    template_name = data.template_name
     values = data.model_dump(
         exclude={"save_as_template", "template_name"}
     )
     for key, value in values.items():
         setattr(plan, key, value)
-    return save(db, plan)
+
+    if save_as_template:
+        final_template_name = (template_name or values["title"]).strip()
+        if not final_template_name:
+            raise HTTPException(
+                status_code=422,
+                detail="Template name is required",
+            )
+        db.add(
+            WorkoutTemplate(
+                user_id=user["uid"],
+                name=final_template_name,
+                sport=values["sport"],
+                notes=values["notes"],
+                exercises=deepcopy(values["exercises"]),
+            )
+        )
+
+    # One transaction: updating the session and creating the new template
+    # succeed or fail together. Existing workout logs remain historical copies.
+    db.commit()
+    db.refresh(plan)
+    return row(plan)
 
 
 @router.delete("/workouts/{item_id}", status_code=204)

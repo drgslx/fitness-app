@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api, send, localDate } from "../../../../api/client";
 
 let nextExerciseKey = 0;
@@ -67,6 +68,10 @@ export default function WorkoutSessionForm({
   submitLabel = "Salveaza sesiunea",
   editing = false,
 }) {
+  const navigate = useNavigate();
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [message, setMessage] = useState("");
+  const draftRef = useRef(null);
   const [form, setForm] = useState(() => createSession(initialSession));
   const [sports, setSports] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -219,34 +224,18 @@ export default function WorkoutSessionForm({
   }
 
   async function useTemplate(template) {
-    if (mutationRef.current) return;
-
-    if (!form.day) {
-      setError("Alege data sesiunii.");
-      return;
-    }
-
+    if (mutationRef.current || !form.day) return;
     mutationRef.current = true;
     setBusy(true);
     setError("");
-
+    setMessage("");
     try {
-      await onSubmit({
-        day: form.day,
-        title: template.name,
-        sport: template.sport,
-        notes: template.notes || "",
-        exercises: (template.exercises ?? []).map((exercise) => ({
-          exercise_id: exercise.exercise_id ?? null,
-          name: exercise.name,
-          sets: exercise.sets ?? 1,
-          reps: exercise.reps ?? null,
-          minutes: exercise.minutes ?? null,
-          weight_kg: exercise.weight_kg ?? null,
-          notes: exercise.notes ?? "",
-        })),
-        save_as_template: false,
-        template_name: null,
+      const created = await send(
+        `/workout-templates/${template.id}/sessions`, "POST", { day: form.day }
+      );
+      navigate(`/workouts/sessions?day=${encodeURIComponent(created.day)}`, {
+        replace: true,
+        state: { message: "Sesiunea a fost adaugata din sablon." },
       });
     } catch (currentError) {
       setError(currentError.message);
@@ -256,9 +245,42 @@ export default function WorkoutSessionForm({
     }
   }
 
+  async function editTemplate(template) {
+    if (mutationRef.current) return;
+    mutationRef.current = true;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const current = await api(`/workout-templates/${template.id}`);
+      draftRef.current = form;
+      setForm(createSession({ ...current, title: current.name, day: form.day }));
+      setEditingTemplate(current.id);
+    } catch (currentError) {
+      setError(currentError.message);
+    } finally {
+      mutationRef.current = false;
+      setBusy(false);
+    }
+  }
+
+  function closeTemplateEditor() {
+    if (draftRef.current) setForm(draftRef.current);
+    draftRef.current = null;
+    setEditingTemplate(null);
+    setMode("template");
+    setError("");
+  }
+
+  function cancelTemplateEdit() {
+    if (busy) return;
+    if (!window.confirm("Renunti la modificarile nesalvate ale sablonului?")) return;
+    closeTemplateEditor();
+  }
+
   async function deleteTemplate(template) {
     if (mutationRef.current) return;
-    if (!window.confirm(`Stergi sablonul "${template.name}"?`)) return;
+    if (!window.confirm(`Stergi sablonul "${template.name}"? Sesiunile deja adaugate in calendar raman neschimbate.`)) return;
 
     mutationRef.current = true;
     setBusy(true);
@@ -288,9 +310,15 @@ export default function WorkoutSessionForm({
       return;
     }
 
+    if (editingTemplate && !window.confirm(
+      "Salvezi modificarile sablonului? Vor fi folosite la adaugarile viitoare. " +
+      "Sesiunile deja planificate sau executate NU se modifica."
+    )) return;
+
     mutationRef.current = true;
     setBusy(true);
     setError("");
+    setMessage("");
 
     const payload = {
       ...form,
@@ -300,15 +328,29 @@ export default function WorkoutSessionForm({
         ...exercise,
         name: exercise.name.trim(),
       })),
-      save_as_template: !editing && saveAsTemplate,
+      save_as_template: !editingTemplate && saveAsTemplate,
       template_name:
-        !editing && saveAsTemplate
+        !editingTemplate && saveAsTemplate
           ? templateName.trim() || form.title.trim()
           : null,
     };
 
     try {
-      await onSubmit(payload);
+      if (editingTemplate) {
+        const updated = await send(`/workout-templates/${editingTemplate}`, "PUT", {
+          name: payload.title,
+          sport: payload.sport,
+          notes: payload.notes,
+          exercises: payload.exercises,
+        });
+        setTemplates((current) => current.map((item) =>
+          item.id === updated.id ? updated : item
+        ));
+        closeTemplateEditor();
+        setMessage("Sablonul a fost actualizat. Sesiunile din calendar au ramas neschimbate.");
+      } else {
+        await onSubmit(payload);
+      }
     } catch (currentError) {
       setError(currentError.message);
     } finally {
@@ -329,7 +371,17 @@ export default function WorkoutSessionForm({
         </p>
       )}
 
-      {!editing && (
+      {message && <p role="status">{message}</p>}
+      {editing && <p role="note">Editezi doar sesiunea din aceasta zi. Sablonul ramane neschimbat.</p>}
+      {editingTemplate && (
+        <aside className="panel" role="note">
+          <h3>Editeaza sablonul</h3>
+          <p>Modifici programul reutilizabil. Valorile noi vor fi folosite cand
+          adaugi sesiuni pe viitor. Sesiunile deja planificate sau executate
+          raman neschimbate.</p>
+        </aside>
+      )}
+      {!editing && !editingTemplate && (
         <div className="session-source-tabs actions">
           <button
             type="button"
@@ -355,14 +407,10 @@ export default function WorkoutSessionForm({
         </div>
       )}
 
-      {!editing && mode === "template" ? (
+      {!editing && !editingTemplate && mode === "template" ? (
         <section className="template-list">
           <h3>Sesiunile mele salvate</h3>
-          <p className="muted">
-            Alege data, apoi foloseste o sesiune salvata pentru a o adauga
-            direct in plan. Poti edita apoi exercitiile si greutatile din
-            sesiunile saptamanii, fara sa modifici sablonul.
-          </p>
+
           <label>
             Data sesiunii
             <input
@@ -373,7 +421,11 @@ export default function WorkoutSessionForm({
               onChange={(event) => updateForm("day", event.target.value)}
             />
           </label>
-          
+          <p className="muted">
+            Alege data, apoi foloseste o sesiune salvata pentru a o adauga
+            direct in plan. Poti edita apoi exercitiile si greutatile din
+            sesiunile saptamanii, fara sa modifici sablonul.
+          </p>
 
           {!templates.length && (
             <p>
@@ -386,7 +438,22 @@ export default function WorkoutSessionForm({
             <article className="template-card" key={template.id}>
               <div>
                 <strong>{template.name}</strong>
-                <p className="meta">{template.sport}</p>
+                <p className="meta">{template.sport} / {template.exercises.length} exercitii</p>
+                <details>
+                  <summary>Vezi exercitiile salvate</summary>
+                  <ul>
+                    {template.exercises.map((exercise, index) => (
+                      <li key={index}>
+                        <strong>{exercise.name}</strong>
+                        {" / "}{exercise.sets} seturi
+                        {exercise.reps != null && ` / ${exercise.reps} repetari`}
+                        {exercise.weight_kg != null && ` / ${exercise.weight_kg} kg`}
+                        {exercise.minutes != null && ` / ${exercise.minutes} min`}
+                        {exercise.notes && ` / ${exercise.notes}`}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               </div>
 
               <div className="actions">
@@ -395,7 +462,12 @@ export default function WorkoutSessionForm({
                   disabled={busy || !form.day}
                   onClick={() => useTemplate(template)}
                 >
-                  Foloseste si adauga
+                  Adauga la data aleasa
+                </button>
+
+                <button type="button" className="secondary-button"
+                  disabled={busy} onClick={() => editTemplate(template)}>
+                  Editeaza sablonul
                 </button>
 
                 <button
@@ -413,7 +485,7 @@ export default function WorkoutSessionForm({
       ) : (
         <form onSubmit={submit}>
           <div className="form-grid">
-            <label>
+            {!editingTemplate && <label>
               Data
               <input
                 type="date"
@@ -424,10 +496,10 @@ export default function WorkoutSessionForm({
                   updateForm("day", event.target.value)
                 }
               />
-            </label>
+            </label>}
 
             <label>
-              Titlu
+              {editingTemplate ? "Nume sablon" : "Titlu"}
               <input
                 required
                 disabled={busy}
@@ -520,7 +592,7 @@ export default function WorkoutSessionForm({
                     <select
                       required
                       disabled={loadingExercises}
-                      value={exercise.exercise_id ?? ""}
+                      value={exercise.exercise_id ?? (exercise.name ? "legacy" : "")}
                       onChange={(event) =>
                         selectExercise(
                           exercise.clientKey,
@@ -529,6 +601,9 @@ export default function WorkoutSessionForm({
                       }
                     >
                       <option value="">Alege exercitiul</option>
+                      {exercise.exercise_id == null && exercise.name && (
+                        <option value="legacy">{exercise.name} (salvat anterior)</option>
+                      )}
 
                       {exercise.exercise_id != null &&
                         !exerciseCatalog.some(
@@ -597,7 +672,7 @@ export default function WorkoutSessionForm({
             ))}
           </div>
 
-          {!editing && (
+          {!editingTemplate && (
             <fieldset className="template-options" disabled={busy}>
               <legend>Reutilizare</legend>
 
@@ -609,7 +684,7 @@ export default function WorkoutSessionForm({
                     setSaveAsTemplate(event.target.checked)
                   }
                 />
-                <span>Salveaza si ca sablon reutilizabil</span>
+                <span>{editing ? "Creeaza si un sablon nou din aceasta sesiune" : "Salveaza si ca sablon reutilizabil"}</span>
               </label>
 
               {saveAsTemplate && (
@@ -629,11 +704,15 @@ export default function WorkoutSessionForm({
           )}
 
           <div className="form-actions">
+            {editingTemplate && (
+              <button type="button" className="secondary-button" disabled={busy}
+                onClick={cancelTemplateEdit}>Anuleaza modificarile</button>
+            )}
             <button
               type="submit"
               disabled={busy || loadingExercises}
             >
-              {busy ? "Se salveaza..." : submitLabel}
+              {busy ? "Se salveaza..." : editingTemplate ? "Salveaza sablonul" : submitLabel}
             </button>
           </div>
         </form>
