@@ -36,6 +36,12 @@ export default function WorkoutsPage() {
           >
             Adauga sport
           </NavLink>
+          <NavLink
+            to="/workouts/reports"
+            className={tabClass}
+          >
+            Rapoarte
+          </NavLink>
         </nav>
       </section>
 

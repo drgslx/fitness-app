@@ -18,7 +18,8 @@ function FeatureMenu({ label, pathPrefix, items }) {
 
   useEffect(() => {
     function closeOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) setOpen(false);
+      if (containerRef.current && !containerRef.current.contains(event.target))
+        setOpen(false);
     }
     function closeWithEscape(event) {
       if (event.key === "Escape") setOpen(false);
@@ -35,7 +36,9 @@ function FeatureMenu({ label, pathPrefix, items }) {
     <div className="navbar-workouts" ref={containerRef}>
       <button
         type="button"
-        className={`navbar-item navbar-workouts-trigger${selected ? " selected" : ""}`}
+        className={`navbar-item navbar-workouts-trigger${
+          selected ? " selected" : ""
+        }`}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((current) => !current)}
@@ -47,7 +50,12 @@ function FeatureMenu({ label, pathPrefix, items }) {
       {open && (
         <div className="navbar-workouts-menu" role="menu">
           {items.map((item) => (
-            <NavLink key={item.to} to={item.to} className={navItemClass} role="menuitem">
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={navItemClass}
+              role="menuitem"
+            >
               <strong>{item.title}</strong>
               <small>{item.description}</small>
             </NavLink>
@@ -63,19 +71,44 @@ export default function Navbar() {
 
   return (
     <nav className="app-navbar">
-      <Link className="navbar-brand" to="/">ATHLETICA</Link>
+      <Link className="navbar-brand" to="/">
+        ATHLETICA
+      </Link>
 
       <div className="navbar-links">
-        <NavLink to="/articles" className={navItemClass}>Articole</NavLink>
+        <NavLink to="/articles" className={navItemClass}>
+          Articole
+        </NavLink>
 
         <FeatureMenu
           label="Antrenamente"
           pathPrefix="/workouts"
           items={[
-            { to: "/workouts/sessions", title: "Sesiuni", description: "Planuri si istoric" },
-            { to: "/workouts/catalog", title: "Catalog sporturi", description: "Sporturi si exercitii aferente" },
-            { to: "/workouts/sports/new", title: "Adauga sport", description: "Creeaza un nou sport in catalog" },
-            { to: "/workouts/sessions/new", title: "Adauga sesiune", description: "Creeaza o noua sesiune in catalog" },
+            {
+              to: "/workouts/sessions",
+              title: "Sesiuni",
+              description: "Planuri si istoric",
+            },
+            {
+              to: "/workouts/catalog",
+              title: "Catalog sporturi",
+              description: "Sporturi si exercitii aferente",
+            },
+            {
+              to: "/workouts/reports",
+              title: "Rapoarte",
+              description: "Progresul exercitiilor pe saptamana sau luna",
+            },
+            {
+              to: "/workouts/sports/new",
+              title: "Adauga sport",
+              description: "Creeaza un nou sport in catalog",
+            },
+            {
+              to: "/workouts/sessions/new",
+              title: "Adauga sesiune",
+              description: "Creeaza o noua sesiune in catalog",
+            },
           ]}
         />
 
@@ -83,20 +116,47 @@ export default function Navbar() {
           label="Alimentatie"
           pathPrefix="/nutrition"
           items={[
-            { to: "/nutrition/journal", title: "Jurnal nutritional", description: "Jurnal, catalog, obiective si rapoarte" },
-            { to: "/nutrition/recipes", title: "Retete", description: "Ingrediente, portii si gramaj gatit" },
-            { to: "/nutrition/foods/new", title: "Adauga aliment", description: "Creeaza un aliment in catalog" },
+            {
+              to: "/nutrition/journal",
+              title: "Jurnal nutritional",
+              description: "Jurnal, catalog, obiective si rapoarte",
+            },
+            {
+              to: "/nutrition/recipes",
+              title: "Retete",
+              description: "Ingrediente, portii si gramaj gatit",
+            },
+            {
+              to: "/nutrition/foods/new",
+              title: "Adauga aliment",
+              description: "Creeaza un aliment in catalog",
+            },
+            {
+              to: "/nutrition/reports",
+              title: "Rapoarte nutritionale",
+              description: "Calorii, nutrienti si comparatii intre perioade",
+            },
           ]}
         />
 
-        {admin && <NavLink to="/admin" className={navItemClass}>Admin</NavLink>}
+        {admin && (
+          <NavLink to="/admin" className={navItemClass}>
+            Admin
+          </NavLink>
+        )}
 
         {user ? (
-          <button type="button" className="navbar-item navbar-signout" onClick={() => signOut(auth)}>
+          <button
+            type="button"
+            className="navbar-item navbar-signout"
+            onClick={() => signOut(auth)}
+          >
             Deconectare
           </button>
         ) : (
-          <NavLink to="/login" className={navItemClass}>Autentificare</NavLink>
+          <NavLink to="/login" className={navItemClass}>
+            Autentificare
+          </NavLink>
         )}
       </div>
     </nav>
