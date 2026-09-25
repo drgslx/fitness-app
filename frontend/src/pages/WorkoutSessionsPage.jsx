@@ -4,6 +4,7 @@ import {
   useLocation,
   useNavigate,
   useSearchParams,
+  NavLink,
 } from "react-router-dom";
 import { api, send, localDate } from "../api/client";
 
@@ -141,6 +142,14 @@ export default function WorkoutSessionsPage() {
           >
             + Adauga sesiune
           </Link>
+          <NavLink
+            to="/workouts/reports"
+            className={({ isActive }) =>
+              `workout-tab${isActive ? " selected" : ""}`
+            }
+          >
+            Rapoarte
+          </NavLink>
         </div>
 
         {location.state?.message && (

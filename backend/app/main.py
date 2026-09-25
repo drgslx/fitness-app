@@ -10,6 +10,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.services.storage import read_image
 from app.training.template_actions_router import router as template_actions_router
+from app.training.progress_router import router as progress_router
+
 
 
 app = FastAPI(title="Sport Platform API", version="0.3.0")
@@ -17,6 +19,7 @@ app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","
 Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
 app.get("/uploads/{name}")(read_image)
 app.include_router(template_actions_router, prefix="/api/v1")
+app.include_router(progress_router, prefix="/api/v1")
 app.include_router(articles_router, prefix="/api/v1")
 app.include_router(tracking_router, prefix="/api/v1")
 app.include_router(recipes_router, prefix="/api/v1")

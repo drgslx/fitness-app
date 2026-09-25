@@ -16,6 +16,8 @@ import RecipesPage from "./pages/RecipesPage";
 import HomePage from "./pages/HomePage";
 import AddSportPage from "./pages/AddSportPage";
 import AddSessionPage from "./pages/AddSessionPage";
+import WorkoutReportsPage from "./pages/WorkoutReportsPage";
+import NutritionReportsPage from "./pages/NutritionReportsPage";
 
 function SignedIn({ children }) {
   const { user, loading } = useAuth();
@@ -50,6 +52,8 @@ function Layout() {
           }
         >
           <Route index element={<Navigate to="/workouts/sessions" replace />} />
+          <Route path="reports" element={<WorkoutReportsPage />} />
+
 
           <Route path="sessions" element={<WorkoutSessionsPage />} />
 
@@ -71,7 +75,10 @@ function Layout() {
           }
         >
           <Route index element={<Navigate to="/nutrition/journal" replace />} />
+
           <Route path="journal" element={<NutritionJournalPage />} />
+          <Route path="reports" element={<NutritionReportsPage />} />
+
           <Route path="foods/new" element={<FoodFormPage />} />
           <Route path="foods/:foodId/edit" element={<FoodFormPage />} />
           <Route path="recipes" element={<RecipesPage />} />
