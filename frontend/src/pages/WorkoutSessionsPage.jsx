@@ -142,14 +142,6 @@ export default function WorkoutSessionsPage() {
           >
             + Adauga sesiune
           </Link>
-          <NavLink
-            to="/workouts/reports"
-            className={({ isActive }) =>
-              `workout-tab${isActive ? " selected" : ""}`
-            }
-          >
-            Rapoarte
-          </NavLink>
         </div>
 
         {location.state?.message && (

@@ -36,7 +36,7 @@ function NutritionResults({ period, anchor }) {
   const currentByDay = new Map(current.map(day => [day.day, day]));
   const points = dayList(range.start, range.end).map(day => {
     const row = currentByDay.get(day);
-    return { day, value: row ? getValue(row) : null,
+    return { day, value: row ? getValue(row) : null, entries: row?.entries ?? null,
       target: row ? (metric === 'calories' ? row.target : metric === 'protein' ? row.protein_target : null) : null };
   });
   const series = [{ key: 'value', label: definition.label, color: '#72f29c' }];
