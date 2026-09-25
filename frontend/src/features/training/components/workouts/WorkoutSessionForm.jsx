@@ -328,9 +328,9 @@ export default function WorkoutSessionForm({
         ...exercise,
         name: exercise.name.trim(),
       })),
-      save_as_template: !editing && saveAsTemplate,
+      save_as_template: !editingTemplate && saveAsTemplate,
       template_name:
-        !editing && saveAsTemplate
+        !editingTemplate && saveAsTemplate
           ? templateName.trim() || form.title.trim()
           : null,
     };
@@ -672,7 +672,7 @@ export default function WorkoutSessionForm({
             ))}
           </div>
 
-          {!editing && !editingTemplate && (
+          {!editingTemplate && (
             <fieldset className="template-options" disabled={busy}>
               <legend>Reutilizare</legend>
 
@@ -684,7 +684,7 @@ export default function WorkoutSessionForm({
                     setSaveAsTemplate(event.target.checked)
                   }
                 />
-                <span>Salveaza si ca sablon reutilizabil</span>
+                <span>{editing ? "Creeaza si un sablon nou din aceasta sesiune" : "Salveaza si ca sablon reutilizabil"}</span>
               </label>
 
               {saveAsTemplate && (
