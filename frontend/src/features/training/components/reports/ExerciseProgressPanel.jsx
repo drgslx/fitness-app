@@ -64,6 +64,16 @@ function ExerciseResults({ sport, exerciseKey, period, anchor }) {
           )}
         </select>
       </label>
+      <TrendChart
+        key={chosen}
+        title={summary.label}
+        unit={summary.unit}
+        data={report.points.map((point) => ({
+          day: point.day,
+          value: point[chosen],
+        }))}
+        series={[{ key: "value", label: summary.label, color: "#72f29c" }]}
+      />
       <div className="progress-summary">
         <div>
           Perioada aleasa
@@ -106,16 +116,7 @@ function ExerciseResults({ sport, exerciseKey, period, anchor }) {
           completata si nu intra in calcul.
         </p>
       )}
-      <TrendChart
-        key={chosen}
-        title={summary.label}
-        unit={summary.unit}
-        data={report.points.map((point) => ({
-          day: point.day,
-          value: point[chosen],
-        }))}
-        series={[{ key: "value", label: summary.label, color: "#72f29c" }]}
-      />
+      
       <ProgressTable
         caption="Detaliile sesiunilor executate"
         rows={report.rows}
