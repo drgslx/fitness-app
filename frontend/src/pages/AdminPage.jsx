@@ -32,7 +32,7 @@ export default function AdminPage() {
     }
   }
   return (
-    <main className="admin">
+    <main className="mx-auto max-w-[760px]">
       <h1>Publică un articol</h1>
       <form onSubmit={submit}>
         <label>

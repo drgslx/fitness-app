@@ -125,11 +125,11 @@ export default function WorkoutSessionsPage() {
   }
 
   return (
-    <div className="sessions-page">
-      <section className="panel">
-        <div className="sessions-heading">
-          <div className="sessions-heading-content">
-            <span className="section-eyebrow">Planificare</span>
+    <div className="min-w-0">
+      <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl">
+        <div className="flex flex-col justify-between gap-4 md:flex-row">
+          <div className="min-w-0 flex-1 [&_p]:text-muted">
+            <span className="mb-2 block text-xs font-bold uppercase tracking-[.14em] text-accent">Planificare</span>
 
             <h2>Sesiunile saptamanii</h2>
 
@@ -137,7 +137,7 @@ export default function WorkoutSessionsPage() {
           </div>
 
           <Link
-            className="button add-session-button"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-accent bg-accent px-4 py-2 font-semibold text-ink no-underline transition-colors hover:bg-[#8cf7ac] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent w-full shrink-0 whitespace-nowrap sm:w-auto"
             to="/workouts/sessions/new"
           >
             + Adauga sesiune
@@ -149,12 +149,12 @@ export default function WorkoutSessionsPage() {
         )}
 
         {error && (
-          <p className="error" role="alert">
+          <p className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]" role="alert">
             {error}
           </p>
         )}
 
-        <div className="week-filter">
+        <div className="grid items-end gap-3 md:grid-cols-[minmax(260px,1fr)_auto]">
           <label>
             Saptamana care contine
             <input
@@ -169,7 +169,7 @@ export default function WorkoutSessionsPage() {
             />
           </label>
 
-          <div className="week-range">
+          <div className="grid gap-1 rounded-lg border border-white/10 bg-[#09130e] p-3 [&_span]:text-xs [&_span]:text-muted">
             <span>Interval selectat</span>
 
             <strong>
@@ -180,32 +180,32 @@ export default function WorkoutSessionsPage() {
       </section>
 
       {!plans.length ? (
-        <section className="empty-state">
+        <section className="my-4 rounded-2xl border border-white/10 bg-surface p-5">
           <h3>Nu ai sesiuni planificate</h3>
 
           <p>Nu exista planuri pentru saptamana selectata.</p>
 
-          <Link className="button" to="/workouts/sessions/new">
+          <Link className="inline-flex min-h-10 items-center justify-center rounded-lg border border-accent bg-accent px-4 py-2 font-semibold text-ink no-underline transition-colors hover:bg-[#8cf7ac] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" to="/workouts/sessions/new">
             Adauga prima sesiune
           </Link>
         </section>
       ) : (
-        <section className="panel sessions-table-panel">
-          <div className="page-heading">
+        <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl w-full min-w-0 overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-white/10 pb-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <span className="section-eyebrow">Program</span>
+              <span className="mb-2 block text-xs font-bold uppercase tracking-[.14em] text-accent">Program</span>
               <h2>Planul saptamanii</h2>
               <p>Sesiunile executate sunt taiate din lista.</p>
             </div>
 
-            <span className="history-count">
+            <span className="shrink-0 rounded-full bg-raised px-3 py-1 text-sm text-accent">
               {plans.filter((plan) => plan.completed).length} / {plans.length}{" "}
               executate
             </span>
           </div>
 
-          <div className="table-wrapper">
-            <table className="sessions-table">
+          <div className="w-full min-w-0 overflow-x-auto rounded-xl border border-white/10">
+            <table className="w-full min-w-[720px] table-fixed [&_td]:break-words [&_td]:whitespace-normal">
               <thead>
                 <tr>
                   <th>Data</th>
@@ -222,7 +222,7 @@ export default function WorkoutSessionsPage() {
                   <tr
                     key={plan.id}
                     className={
-                      plan.completed ? "session-row completed" : "session-row"
+                      plan.completed ? "bg-[#102419] [&_td:first-child]:shadow-[inset_4px_0_0_#72f29c]" : ""
                     }
                   >
                     <td>{plan.day}</td>
@@ -231,7 +231,7 @@ export default function WorkoutSessionsPage() {
                       <strong>{plan.title}</strong>
 
                       {plan.notes && (
-                        <small className="session-table-notes">
+                        <small className="mt-1 block text-sm font-normal text-muted">
                           {plan.notes}
                         </small>
                       )}
@@ -240,7 +240,7 @@ export default function WorkoutSessionsPage() {
                     <td>{plan.sport}</td>
 
                     <td>
-                      <ul className="session-table-exercises">
+                      <ul className="grid min-w-0 list-none gap-2 p-0 [&_li]:grid [&_li]:min-w-0 [&_li]:gap-1 [&_li]:break-words [&_li]:rounded-lg [&_li]:border [&_li]:border-white/10 [&_li]:bg-[#111f17] [&_li]:p-2 [&_li_span]:text-xs [&_li_span]:text-[#adbbb2]">
                         {plan.exercises.map((exercise, index) => (
                           <ExerciseSummary
                             key={`${plan.id}-${index}`}
@@ -254,16 +254,16 @@ export default function WorkoutSessionsPage() {
                       <span
                         className={
                           plan.completed
-                            ? "session-status completed"
-                            : "session-status planned"
+                            ? "inline-flex rounded-full border border-accent bg-accent px-3 py-1 text-xs font-bold text-ink"
+                            : "inline-flex rounded-full border border-[#65756c] bg-[#18241d] px-3 py-1 text-xs font-bold text-[#cbd5cf]"
                         }
                       >
                         {plan.completed ? "Executat" : "Planificat"}
                       </span>
                     </td>
 
-                    <td className="session-actions-cell">
-                      <div className="session-table-actions">
+                    <td className="align-top">
+                      <div className="grid min-w-0 gap-2 [&_button]:w-full [&_button]:px-2 [&_button]:py-1 [&_button]:text-xs">
                         <button
                           type="button"
                           disabled={busy}
@@ -281,7 +281,7 @@ export default function WorkoutSessionsPage() {
 
                         <button
                           type="button"
-                          className="secondary-button"
+                          className="!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]"
                           disabled={busy}
                           onClick={() => editSession(plan)}
                         >
@@ -290,7 +290,7 @@ export default function WorkoutSessionsPage() {
 
                         <button
                           type="button"
-                          className="danger-button"
+                          className="!border-[#82433f] !bg-[#321a18] !text-[#ffaaa3] hover:!border-[#ff766e] hover:!bg-[#46211e]"
                           disabled={busy}
                           onClick={() => deleteSession(plan)}
                         >

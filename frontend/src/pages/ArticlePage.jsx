@@ -20,32 +20,32 @@ export default function ArticlePage() {
     };
   }, [slug]);
   return (
-    <main className="article-page">
-      <Link className="back-link" to="/articles">
+    <main className="max-w-[850px] [&_h1]:break-words [&_h1]:leading-tight [&_figure]:my-6 [&_img]:w-full [&_img]:rounded-2xl">
+      <Link className="text-accent hover:underline" to="/articles">
         ← Înapoi la toate articolele
       </Link>
       {error ? (
-        <p role="alert" className="error">
+        <p role="alert" className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]">
           {error}
         </p>
       ) : !article ? (
         <p>Se încarcă…</p>
       ) : (
         <article>
-          <p className="meta">
+          <p className="text-sm text-muted">
             {new Date(article.created_at).toLocaleDateString("ro-RO")}
             {admin && " · ID: " + article.id}
           </p>
           <h1>{article.title}</h1>
-          <p className="article-summary">{article.summary}</p>
+          <p className="text-xl text-[#aab7ae]">{article.summary}</p>
           {article.images.map((image) => (
             <figure key={image.id}>
               <img src={imageUrl(image.url)} alt={image.alt_text} />
             </figure>
           ))}
-          <div className="content">{article.content}</div>
+          <div className="mt-4 max-w-[820px] whitespace-pre-wrap break-words leading-relaxed">{article.content}</div>
           <p>
-            <Link className="back-link" to="/articles">
+            <Link className="text-accent hover:underline" to="/articles">
               ← Înapoi la toate articolele
             </Link>
           </p>

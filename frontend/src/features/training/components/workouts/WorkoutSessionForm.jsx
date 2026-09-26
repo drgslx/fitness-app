@@ -364,9 +364,9 @@ export default function WorkoutSessionForm({
   }
 
   return (
-    <div className="session-form-layout">
+    <div className="grid gap-4">
       {error && (
-        <p className="error" role="alert">
+        <p className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]" role="alert">
           {error}
         </p>
       )}
@@ -374,41 +374,58 @@ export default function WorkoutSessionForm({
       {message && <p role="status">{message}</p>}
       {editing && <p role="note">Editezi doar sesiunea din aceasta zi. Sablonul ramane neschimbat.</p>}
       {editingTemplate && (
-        <aside className="panel" role="note">
+        <aside className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl" role="note">
           <h3>Editeaza sablonul</h3>
           <p>Modifici programul reutilizabil. Valorile noi vor fi folosite cand
           adaugi sesiuni pe viitor. Sesiunile deja planificate sau executate
           raman neschimbate.</p>
         </aside>
       )}
-      {!editing && !editingTemplate && (
-        <div className="session-source-tabs actions">
-          <button
-            type="button"
-            disabled={busy}
-            aria-pressed={mode === "new"}
-            className={mode === "new" ? "selected" : "secondary-button"}
-            onClick={() => setMode("new")}
-          >
-            Sesiune noua
-          </button>
+      {!editingTemplate && (
+        <div className="my-3 flex flex-wrap items-center gap-3">
+          {!editing && (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                aria-pressed={mode === "new"}
+                className={mode === "new" ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink" : "!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent"}
+                onClick={() => setMode("new")}
+              >
+                Sesiune noua
+              </button>
 
-          <button
-            type="button"
-            disabled={busy}
-            aria-pressed={mode === "template"}
-            className={
-              mode === "template" ? "selected" : "secondary-button"
-            }
-            onClick={() => setMode("template")}
-          >
-            Din sesiune salvata
-          </button>
+              <button
+                type="button"
+                disabled={busy}
+                aria-pressed={mode === "template"}
+                className={
+                  mode === "template" ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink" : "!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent"
+                }
+                onClick={() => setMode("template")}
+              >
+                Din sesiune salvata
+              </button>
+            </>
+          )}
+
+          {(editing || mode === "new") && (
+            <label className="ml-auto flex cursor-pointer items-center gap-2 rounded-lg border border-[#3c6654] bg-[#193329] px-3 py-2 text-sm text-copy">
+              <input
+                type="checkbox"
+                className="min-h-0 w-4 accent-accent"
+                disabled={busy}
+                checked={saveAsTemplate}
+                onChange={(event) => setSaveAsTemplate(event.target.checked)}
+              />
+              Salveaza ca sablon
+            </label>
+          )}
         </div>
       )}
 
       {!editing && !editingTemplate && mode === "template" ? (
-        <section className="template-list">
+        <section className="grid gap-3">
           <h3>Sesiunile mele salvate</h3>
 
           <label>
@@ -421,7 +438,7 @@ export default function WorkoutSessionForm({
               onChange={(event) => updateForm("day", event.target.value)}
             />
           </label>
-          <p className="muted">
+          <p className="text-muted">
             Alege data, apoi foloseste o sesiune salvata pentru a o adauga
             direct in plan. Poti edita apoi exercitiile si greutatile din
             sesiunile saptamanii, fara sa modifici sablonul.
@@ -435,10 +452,10 @@ export default function WorkoutSessionForm({
           )}
 
           {templates.map((template) => (
-            <article className="template-card" key={template.id}>
+            <article className="rounded-xl border border-white/10 bg-ink/70 p-4" key={template.id}>
               <div>
                 <strong>{template.name}</strong>
-                <p className="meta">{template.sport} / {template.exercises.length} exercitii</p>
+                <p className="text-sm text-muted">{template.sport} / {template.exercises.length} exercitii</p>
                 <details>
                   <summary>Vezi exercitiile salvate</summary>
                   <ul>
@@ -456,7 +473,7 @@ export default function WorkoutSessionForm({
                 </details>
               </div>
 
-              <div className="actions">
+              <div className="my-3 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   disabled={busy || !form.day}
@@ -465,14 +482,14 @@ export default function WorkoutSessionForm({
                   Adauga la data aleasa
                 </button>
 
-                <button type="button" className="secondary-button"
+                <button type="button" className="!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]"
                   disabled={busy} onClick={() => editTemplate(template)}>
                   Editeaza sablonul
                 </button>
 
                 <button
                   type="button"
-                  className="danger-button"
+                  className="!border-[#82433f] !bg-[#321a18] !text-[#ffaaa3] hover:!border-[#ff766e] hover:!bg-[#46211e]"
                   disabled={busy}
                   onClick={() => deleteTemplate(template)}
                 >
@@ -484,7 +501,7 @@ export default function WorkoutSessionForm({
         </section>
       ) : (
         <form onSubmit={submit}>
-          <div className="form-grid">
+          <div className="grid gap-3 md:grid-cols-2">
             {!editingTemplate && <label>
               Data
               <input
@@ -551,7 +568,7 @@ export default function WorkoutSessionForm({
           </label>
 
           {catalogError && (
-            <p className="error" role="alert">
+            <p className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]" role="alert">
               {catalogError}
             </p>
           )}
@@ -561,10 +578,10 @@ export default function WorkoutSessionForm({
           )}
 
           {/* Butonul ramane deasupra tuturor exercitiilor. */}
-          <div className="actions">
+          <div className="my-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="secondary-button"
+              className="!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]"
               disabled={
                 busy ||
                 loadingExercises ||
@@ -577,16 +594,16 @@ export default function WorkoutSessionForm({
             </button>
           </div>
 
-          <div className="exercise-form-list">
+          <div className="grid gap-3">
             {visibleExercises.map(({ exercise, index }) => (
               <fieldset
-                className="exercise-fieldset"
+                className="rounded-xl border border-white/15 p-3"
                 key={exercise.clientKey}
                 disabled={busy}
               >
                 <legend>Exercitiul {index + 1}</legend>
 
-                <div className="form-grid">
+                <div className="grid gap-3 md:grid-cols-2">
                   <label>
                     Exercitiu
                     <select
@@ -663,7 +680,7 @@ export default function WorkoutSessionForm({
 
                 <button
                   type="button"
-                  className="danger-button"
+                  className="!border-[#82433f] !bg-[#321a18] !text-[#ffaaa3] hover:!border-[#ff766e] hover:!bg-[#46211e]"
                   onClick={() => removeExercise(exercise.clientKey)}
                 >
                   Elimina exercitiul
@@ -673,10 +690,10 @@ export default function WorkoutSessionForm({
           </div>
 
           {!editingTemplate && (
-            <fieldset className="template-options" disabled={busy}>
+            <fieldset className="grid gap-3" disabled={busy}>
               <legend>Reutilizare</legend>
 
-              <label className="checkbox-label">
+              <label className="flex items-center gap-2 [&_input]:w-auto">
                 <input
                   type="checkbox"
                   checked={saveAsTemplate}
@@ -703,9 +720,9 @@ export default function WorkoutSessionForm({
             </fieldset>
           )}
 
-          <div className="form-actions">
+          <div className="flex flex-wrap gap-2">
             {editingTemplate && (
-              <button type="button" className="secondary-button" disabled={busy}
+              <button type="button" className="!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]" disabled={busy}
                 onClick={cancelTemplateEdit}>Anuleaza modificarile</button>
             )}
             <button

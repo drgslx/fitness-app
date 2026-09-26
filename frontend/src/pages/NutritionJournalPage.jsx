@@ -145,9 +145,8 @@ export default function NutritionJournalPage() {
   }
 
   return (
-    <section>
-      <p>Produse per 100 g, portii in grame si obiective cu istoric.</p>
-      <div className="tabs">
+    <section> 
+      <div className="mt-4 flex flex-wrap gap-2">
         {[
           ["diary", "Jurnal zilnic"],
           ["foods", "Catalog alimente"],
@@ -165,7 +164,7 @@ export default function NutritionJournalPage() {
         ))}
       </div>
       {error && (
-        <p role="alert" className="error">
+        <p role="alert" className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]">
           {error}
         </p>
       )}
@@ -183,7 +182,7 @@ export default function NutritionJournalPage() {
               }
             />
           </label>
-          <div className="stats">
+          <div className="my-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 [&_section]:rounded-xl [&_section]:bg-[#13251a] [&_section]:p-4 [&_strong]:text-xl [&_strong]:text-accent">
             <section>
               <strong>{total.toFixed(1)} kcal</strong>
               <p>Tinta: {activeGoal?.calories ?? "nesetata"} kcal</p>
@@ -200,9 +199,9 @@ export default function NutritionJournalPage() {
               <p>Consum minus tinta</p>
             </section>
           </div>
-          <form className="panel" onSubmit={submitEntry}>
+          <form className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl" onSubmit={submitEntry}>
             <h2>{entryId ? "Editeaza portia" : "Adauga o portie"}</h2>
-            <div className="search-row">
+            <div className="my-4 flex flex-wrap items-end gap-3 [&_label]:min-w-[180px] [&_label]:flex-1">
               <label>
                 Cauta aliment sau reteta
                 <input
@@ -221,7 +220,7 @@ export default function NutritionJournalPage() {
               </button>
             </div>
             {searchResults.length > 0 && (
-              <div className="actions">
+              <div className="my-3 flex flex-wrap items-center gap-2">
                 {searchResults.map((item) => (
                   <button
                     type="button"
@@ -243,7 +242,7 @@ export default function NutritionJournalPage() {
                 {entryType === "food" ? "aliment" : "reteta"})
               </p>
             )}
-            <div className="form-grid">
+            <div className="grid gap-3 md:grid-cols-2">
               <label>
                 {entryType === "recipe" && recipeUnit === "servings"
                   ? "Portii"
@@ -293,7 +292,7 @@ export default function NutritionJournalPage() {
             )}
           </form>
           {!foods.length && <p>Adauga mai intai un produs in catalog.</p>}
-          <div className="table-wrap">
+          <div className="my-4 w-full overflow-x-auto">
             <table>
               <thead>
                 <tr>
@@ -380,7 +379,7 @@ export default function NutritionJournalPage() {
       {tab === "foods" && (
         <>
           <form
-            className="search-row"
+            className="my-4 flex flex-wrap items-end gap-3 [&_label]:min-w-[180px] [&_label]:flex-1"
             onSubmit={(event) => {
               event.preventDefault();
               action(() => loadCatalog());
@@ -399,7 +398,7 @@ export default function NutritionJournalPage() {
             Catalogul este comun tuturor utilizatorilor. Rezultatele sunt
             limitate la 200.
           </p>
-          <div className="table-wrap">
+          <div className="my-4 w-full overflow-x-auto">
             <table>
               <thead>
                 <tr>
@@ -457,7 +456,7 @@ export default function NutritionJournalPage() {
       {tab === "goals" && (
         <>
           <form
-            className="panel"
+            className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl"
             onSubmit={(event) => {
               event.preventDefault();
               action(async () => {
@@ -467,7 +466,7 @@ export default function NutritionJournalPage() {
             }}
           >
             <h2>Seteaza obiectivul</h2>
-            <div className="form-grid">
+            <div className="grid gap-3 md:grid-cols-2">
               <label>
                 Incepand cu
                 <input

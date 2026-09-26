@@ -1,6 +1,6 @@
 import React from 'react';
-export default function PeriodSelector({ period, anchor, onPeriodChange, onAnchorChange }) {
-  return <div className="progress-filters">
+export default function PeriodSelector({ period, anchor, onPeriodChange, onAnchorChange, className = "grid grid-cols-1 items-end gap-3 sm:grid-cols-2" }) {
+  return <div className={className}>
     <label>Perioada<select value={period} onChange={e => onPeriodChange(e.target.value)}>
       <option value="week">Saptamana</option><option value="month">Luna</option>
     </select></label>

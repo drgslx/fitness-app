@@ -23,9 +23,9 @@ export default function ExerciseList({
   }
 
   return (
-    <div className="grid">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
       {exercises.map((exercise) => (
-        <article className="card card-body" key={exercise.id}>
+        <article className="overflow-hidden rounded-2xl border border-white/10 bg-surface shadow-lg transition-colors hover:border-accent/30 p-4" key={exercise.id}>
           <strong>{exercise.name}</strong>
 
           <p>

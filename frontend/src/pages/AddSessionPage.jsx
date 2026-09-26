@@ -18,14 +18,14 @@ export default function AddSessionPage() {
 
   if (editing && !editingSession) {
     return (
-      <section className="panel">
+      <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl">
         <h2>Sesiunea nu este disponibila</h2>
 
         <p>
           Deschide sesiunea din lista saptamanii pentru a o edita.
         </p>
 
-        <Link className="button" to="/workouts/sessions">
+        <Link className="inline-flex min-h-10 items-center justify-center rounded-lg border border-accent bg-accent px-4 py-2 font-semibold text-ink no-underline transition-colors hover:bg-[#8cf7ac] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" to="/workouts/sessions">
           Inapoi la sesiuni
         </Link>
       </section>
@@ -50,10 +50,10 @@ export default function AddSessionPage() {
   }
 
   return (
-    <section className="panel session-editor-page">
-      <div className="page-heading">
+    <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl min-w-0">
+      <div className="flex flex-col gap-3 border-b border-white/10 pb-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <span className="section-eyebrow">
+          <span className="mb-2 block text-xs font-bold uppercase tracking-[.14em] text-accent">
             {editing ? "Editare plan" : "Plan nou"}
           </span>
 
@@ -67,7 +67,7 @@ export default function AddSessionPage() {
         </div>
 
         <Link
-          className="button secondary-button"
+          className="inline-flex min-h-10 items-center justify-center rounded-lg border border-accent bg-accent px-4 py-2 font-semibold text-ink no-underline transition-colors hover:bg-[#8cf7ac] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent !border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]"
           to="/workouts/sessions"
         >
           Inapoi la sesiuni

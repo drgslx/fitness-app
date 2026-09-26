@@ -57,17 +57,17 @@ export default function FoodFormPage() {
     }
   }
 
-  if (loading) return <section className="panel"><p>Se incarca formularul...</p></section>;
+  if (loading) return <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl"><p>Se incarca formularul...</p></section>;
 
   return (
-    <section className="panel">
-      <p><Link className="back-link" to="/nutrition/journal">Inapoi la jurnal nutritional</Link></p>
+    <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl">
+      <p><Link className="text-accent hover:underline" to="/nutrition/journal">Inapoi la jurnal nutritional</Link></p>
       <h2>{editing ? "Editeaza alimentul" : "Adauga un aliment"}</h2>
       <p>Toate valorile sunt pentru 100 g. Completeaza nutrientii pe care ii cunosti.</p>
-      {error && <p role="alert" className="error">{error}</p>}
+      {error && <p role="alert" className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]">{error}</p>}
 
       <form onSubmit={submit}>
-        <div className="form-grid">
+        <div className="grid gap-3 md:grid-cols-2">
           <label>
             Nume
             <input required maxLength={180} value={food.name} onChange={(event) => setFood({ ...food, name: event.target.value })} />
@@ -98,7 +98,7 @@ export default function FoodFormPage() {
         </div>
 
         <button disabled={busy}>{busy ? "Se salveaza..." : "Salveaza alimentul"}</button>
-        <Link className="back-link" to="/nutrition/journal">Anuleaza</Link>
+        <Link className="text-accent hover:underline" to="/nutrition/journal">Anuleaza</Link>
       </form>
     </section>
   );

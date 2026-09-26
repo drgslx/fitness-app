@@ -1,6 +1,5 @@
 import React, { useId, useState } from "react";
 import { formatValue } from "./periods";
-import "./reports.css";
 
 // Null represents missing data, never zero. Secondary series use their own scale.
 function bounds(values) {
@@ -42,7 +41,7 @@ export default function TrendChart({ title, unit, data, series }) {
   const measuredValues = data.map((point) => point[series[0]?.key]).filter(numeric);
   if (!values.length && !secondaryValues.length)
     return (
-      <div className="progress-chart">
+      <div className="m-0 min-w-0 rounded-xl border border-[#294238] bg-[#0d1a14] p-3 [&_figcaption]:font-bold [&_svg]:block [&_svg]:h-auto [&_svg]:w-full">
         <h3>{title}</h3>
         <p>Nu exista valori inregistrate pentru acest indicator.</p>
       </div>
@@ -75,7 +74,7 @@ export default function TrendChart({ title, unit, data, series }) {
   // not turn an unlogged day into an actual observation.
   const observations = data.filter((point) => series.some(line => numeric(point[line.key])));
   return (
-    <figure className="progress-chart">
+    <figure className="m-0 min-w-0 rounded-xl border border-[#294238] bg-[#0d1a14] p-3 [&_figcaption]:font-bold [&_svg]:block [&_svg]:h-auto [&_svg]:w-full">
       <figcaption id={titleId}>
         {title} ({unit})
       </figcaption>
@@ -163,7 +162,7 @@ export default function TrendChart({ title, unit, data, series }) {
           );
         })}
       </svg>
-      <div className="progress-legend">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 [&_span]:inline-flex [&_span]:items-center [&_span]:gap-2 [&_i]:h-3 [&_i]:w-3 [&_i]:rounded-full">
         {series.map((line) => (
           <span key={line.key}>
             <i style={{ background: line.color }} />
@@ -172,11 +171,11 @@ export default function TrendChart({ title, unit, data, series }) {
         ))}
       </div>
       <div
-        className="progress-observations"
+        className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]"
         aria-label="Valori inregistrate pe zile"
       >
         {observations.map((point) => (
-          <div className="progress-observation" key={point.day}>
+          <div className="flex flex-col gap-1 rounded-lg border border-[#294238] p-2 [&_small]:text-muted" key={point.day}>
             <time dateTime={point.day}>{point.day}</time>
             {series.filter(line => numeric(point[line.key])).map(line => (
               <strong key={line.key}>{line.label}: {formatValue(point[line.key])} {line.unit || unit}</strong>
@@ -190,7 +189,7 @@ export default function TrendChart({ title, unit, data, series }) {
           </div>
         ))}
       </div>
-      <p className="progress-readout" role="status">
+      <p className="mt-2 text-sm text-[#bfcec5]" role="status">
         {active
           ? `${active.day}: ${series
               .filter((line) => numeric(active[line.key]))
