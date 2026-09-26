@@ -61,7 +61,7 @@ export default function RecipesPage() {
     setRecipe({
       name: item.name,
       servings: item.servings,
-      cooked_total_grams: item.cooked_total_grams ?? "",
+      cooked_total_grams: item.cooked_total_grams ?? item.raw_total_grams,
       notes: item.notes,
       ingredients: item.ingredients.map((ingredient) => ({
         food_id: ingredient.food_id,
@@ -78,10 +78,7 @@ export default function RecipesPage() {
       const payload = {
         ...recipe,
         servings: Number(recipe.servings),
-        cooked_total_grams:
-          recipe.cooked_total_grams === ""
-            ? null
-            : Number(recipe.cooked_total_grams),
+        cooked_total_grams: Number(recipe.cooked_total_grams),
         ingredients: recipe.ingredients.map((item) => ({
           food_id: item.food_id,
           grams: Number(item.grams),
@@ -103,13 +100,18 @@ export default function RecipesPage() {
     (sum, item) => sum + Number(item.grams || 0),
     0
   );
+  const finalTotal = Number(recipe.cooked_total_grams);
+  const gramsPerServing =
+    finalTotal > 0 && Number(recipe.servings) > 0
+      ? finalTotal / Number(recipe.servings)
+      : null;
 
   return (
     <section>
       <h2>Retete</h2>
       <p>
-        Adauga ingrediente din catalog. Cantitatea cruda se calculeaza automat;
-        cantitatea dupa gatire este optionala.
+        Adauga ingredientele, gramajul total al retetei si numarul de portii. In
+        jurnal vei putea alege portii sau grame.
       </p>
       {error && (
         <p
@@ -151,10 +153,12 @@ export default function RecipesPage() {
             />
           </label>
           <label>
-            Cantitate dupa gatire (g, optional)
+            Gramaj total final (g)
             <input
+              required
               type="number"
               min=".1"
+              max="100000"
               step=".1"
               value={recipe.cooked_total_grams}
               onChange={(event) =>
@@ -164,8 +168,16 @@ export default function RecipesPage() {
           </label>
         </div>
         <p>
-          Cantitate totala ingrediente: <strong>{rawTotal.toFixed(1)} g</strong>
+          Cantitate ingrediente: <strong>{rawTotal.toFixed(1)} g</strong>.
+          Introdu greutatea intregii retete asa cum o vei cantari cand mananci;
+          poate diferi dupa gatire.
         </p>
+        {gramsPerServing !== null && (
+          <p>
+            O portie = <strong>{gramsPerServing.toFixed(1)} g</strong> din
+            reteta finala.
+          </p>
+        )}
         <label>
           Note
           <textarea
@@ -308,12 +320,10 @@ export default function RecipesPage() {
                 kcal/portie
               </p>
               <p>
-                {item.raw_total_grams} g ingrediente
-                {item.cooked_total_grams
-                  ? ` -> ${item.cooked_total_grams} g gatit`
-                  : ""}
+                {item.basis_grams} g total / {item.servings} portii (
+                {(item.basis_grams / item.servings).toFixed(1)} g/portie)
               </p>
-              <p>{item.servings} portii</p>
+              <p>{item.raw_total_grams} g ingrediente</p>
               <button type="button" onClick={() => edit(item)}>
                 Editeaza
               </button>

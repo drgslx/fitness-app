@@ -133,8 +133,22 @@ export default function NutritionJournalPage() {
     setEntryType(item.type);
     setEntryId(null);
     setRecipeUnit(item.type === "recipe" ? "servings" : "grams");
-    setEntry((current) => ({ ...current, grams: 1 }));
+    setEntry((current) => ({ ...current, grams: item.type === "recipe" ? 1 : 100 }));
   }
+
+  const amount = Number(entry.grams);
+  const estimatedCalories =
+    selected && amount > 0
+      ? selected.type === "food"
+        ? (selected.calories * amount) / 100
+        : recipeUnit === "servings"
+          ? selected.calories_per_serving == null
+            ? null
+            : selected.calories_per_serving * amount
+          : selected.calories_per_100 == null
+            ? null
+            : (selected.calories_per_100 * amount) / 100
+      : null;
 
   function deleteFood(food) {
     if (!window.confirm(`Stergi definitiv alimentul "${food.name}"?`)) return;
@@ -145,7 +159,8 @@ export default function NutritionJournalPage() {
   }
 
   return (
-    <section> 
+    <section>
+      <p>Produse per 100 g, portii in grame si obiective cu istoric.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         {[
           ["diary", "Jurnal zilnic"],
@@ -232,6 +247,8 @@ export default function NutritionJournalPage() {
                       ? item.calories
                       : item.calories_per_serving}{" "}
                     kcal/{item.type === "food" ? "100 g" : "portie"}
+                    {item.type === "recipe" &&
+                      ` · ${item.calories_per_100} kcal/100 g`}
                   </button>
                 ))}
               </div>
@@ -240,13 +257,19 @@ export default function NutritionJournalPage() {
               <p>
                 <strong>Selectat:</strong> {selected.name} (
                 {entryType === "food" ? "aliment" : "reteta"})
+                {entryType === "recipe" && selected.basis_grams > 0 && selected.servings > 0 && (
+                  <> · 1 portie = {(selected.basis_grams / selected.servings).toFixed(1)} g</>
+                )}
+                {estimatedCalories !== null && (
+                  <> · {estimatedCalories.toFixed(1)} kcal pentru cantitatea aleasa</>
+                )}
               </p>
             )}
             <div className="grid gap-3 md:grid-cols-2">
               <label>
                 {entryType === "recipe" && recipeUnit === "servings"
                   ? "Portii"
-                  : "Gramaj"}
+                  : "Grame"}
                 <input
                   type="number"
                   min=".1"
@@ -258,15 +281,18 @@ export default function NutritionJournalPage() {
                   }
                 />
               </label>
-              {entryType === "recipe" && selected?.cooked_total_grams && (
+              {entryType === "recipe" && (
                 <label>
                   Unitate
                   <select
                     value={recipeUnit}
-                    onChange={(event) => setRecipeUnit(event.target.value)}
+                    onChange={(event) => {
+                      setRecipeUnit(event.target.value);
+                      setEntry((current) => ({ ...current, grams: "" }));
+                    }}
                   >
                     <option value="servings">Portii</option>
-                    <option value="grams">g gatit</option>
+                    <option value="grams">Grame</option>
                   </select>
                 </label>
               )}
@@ -282,6 +308,15 @@ export default function NutritionJournalPage() {
                 />
               </label>
             </div>
+            {entryType === "recipe" && recipeUnit === "grams" && (
+              <p className="text-sm text-muted">
+                {selected?.cooked_total_grams
+                  ? "Gramele sunt din preparatul gatit."
+                  : selected?.raw_total_grams
+                    ? "Reteta nu are gramaj gatit: calculul foloseste gramajul ingredientelor."
+                    : "Calculul foloseste gramajul definit pentru reteta."}
+              </p>
+            )}
             <button disabled={busy}>
               {entryId ? "Salveaza portia" : "Adauga in jurnal"}
             </button>
@@ -333,8 +368,11 @@ export default function NutritionJournalPage() {
                                   id: item.recipe_id,
                                   name: item.snapshot.name,
                                   type: "recipe",
-                                  cooked_total_grams:
-                                    item.quantity_unit === "grams",
+                                  calories_per_100: item.snapshot.calories,
+                                  calories_per_serving: item.servings
+                                    ? (item.snapshot.calories * item.grams) /
+                                      (100 * item.servings)
+                                    : null,
                                 }
                               : {
                                   id: item.food_id,
