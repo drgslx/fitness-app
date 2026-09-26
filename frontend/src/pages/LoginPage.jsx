@@ -20,7 +20,7 @@ export default function LoginPage() {
       </main>
     );
   if (loading) return <main>Se verifică sesiunea…</main>;
-  if (user) return <Navigate to="/articles" replace />;
+  if (user) return <Navigate to="/" replace />;
   async function run(action) {
     setBusy(true);
     setError("");
