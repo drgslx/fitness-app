@@ -26,6 +26,7 @@ services:
       postgres:
         condition: service_healthy
   frontend:
+    image: sport-platform-frontend:tailwind
     build:
       context: ./frontend
       args:

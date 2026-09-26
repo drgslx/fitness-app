@@ -93,13 +93,16 @@ export function useSportsCatalog() {
   }
 
   function selectSport(id) {
-    if (savingRef.current) return;
+  if (savingRef.current) return;
 
-    setError("");
-    setMessage("");
-    setExercises([]);
-    setSelectedSportId(String(id));
-  }
+  const nextSportId = String(id);
+  if (nextSportId === selectedSportId) return;
+
+  setError("");
+  setMessage("");
+  setExercises([]);
+  setSelectedSportId(nextSportId);
+}
 
   function addSport(values) {
     return runMutation(async () => {

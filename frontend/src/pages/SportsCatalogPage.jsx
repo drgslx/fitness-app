@@ -21,8 +21,8 @@ export default function SportsCatalogPage() {
   } = useSportsCatalog();
 
   return (
-    <section className="panel sports-catalog-page">
-      <div className="page-heading">
+    <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl gap-4">
+      <div className="flex flex-col gap-3 border-b border-white/10 pb-3 md:flex-row md:items-start md:justify-between">
         <h2>Catalog personal de sporturi</h2>
 
         <p>
@@ -31,14 +31,14 @@ export default function SportsCatalogPage() {
       </div>
 
       {error && (
-        <p className="error" role="alert">
+        <p className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]" role="alert">
           {error}
         </p>
       )}
 
       {message && <p role="status">{message}</p>}
 
-      <div className="catalog-section">
+      <div className="rounded-xl border border-white/10 bg-ink/70 p-4">
         <h3>Sporturile mele</h3>
 
         {loadingSports ? (
@@ -54,10 +54,10 @@ export default function SportsCatalogPage() {
       </div>
 
       {selectedSport && (
-        <div className="selected-sport-panel">
-          <div className="catalog-section-heading">
+        <div className="rounded-xl border border-white/10 bg-ink/70 p-4">
+          <div className="mb-3 flex flex-col justify-between gap-3 md:flex-row">
             <div>
-              <span className="section-eyebrow">Sport selectat</span>
+              <span className="mb-2 block text-xs font-bold uppercase tracking-[.14em] text-accent">Sport selectat</span>
               <h3>{selectedSport.name}</h3>
 
               <p>
@@ -68,7 +68,7 @@ export default function SportsCatalogPage() {
             {!selectedSport.is_system && (
               <button
                 type="button"
-                className="danger-button"
+                className="!border-[#82433f] !bg-[#321a18] !text-[#ffaaa3] hover:!border-[#ff766e] hover:!bg-[#46211e]"
                 disabled={saving}
                 onClick={() => archiveSport(selectedSport)}
               >
@@ -77,8 +77,8 @@ export default function SportsCatalogPage() {
             )}
           </div>
 
-          <div className="catalog-content-grid">
-            <div className="catalog-form-card">
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(280px,.85fr)_minmax(340px,1.15fr)]">
+            <div className="w-full max-w-[720px] rounded-xl border border-white/10 bg-ink/70 p-4">
               <h3>Adauga exercitiu</h3>
 
               <ExerciseForm
@@ -88,7 +88,7 @@ export default function SportsCatalogPage() {
               />
             </div>
 
-            <div className="catalog-exercises">
+            <div className="rounded-xl border border-white/10 bg-ink/70 p-4">
               <h3>Exercitii existente</h3>
 
               <ExerciseList

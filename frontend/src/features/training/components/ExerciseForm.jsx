@@ -32,7 +32,7 @@ export default function ExerciseForm({
 
   return (
     <form onSubmit={submit}>
-      <div className="form-grid">
+      <div className="grid gap-3 md:grid-cols-2">
         <label>
           Nume exercitiu
           <input

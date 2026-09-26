@@ -35,8 +35,8 @@ export default function AddSportPage() {
   }
 
   return (
-    <section className="panel">
-      <div className="page-heading">
+    <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl">
+      <div className="flex flex-col gap-3 border-b border-white/10 pb-3 md:flex-row md:items-start md:justify-between">
         <h2>Adauga sport</h2>
 
         <p>
@@ -46,12 +46,12 @@ export default function AddSportPage() {
       </div>
 
       {error && (
-        <p className="error" role="alert">
+        <p className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]" role="alert">
           {error}
         </p>
       )}
 
-      <div className="catalog-form-card">
+      <div className="w-full max-w-[720px] rounded-xl border border-white/10 bg-ink/70 p-4">
         <SportForm onSubmit={addSport} disabled={saving} />
       </div>
     </section>

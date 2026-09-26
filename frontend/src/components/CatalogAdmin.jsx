@@ -20,7 +20,7 @@ export default function CatalogAdmin() {
     }
   }
   return (
-    <section className="panel">
+    <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl">
       <h2>Configurare catalog și obiective</h2>
       <p>
         Cheia trebuie să fie unică: litere mici, cifre, underscore; de exemplu

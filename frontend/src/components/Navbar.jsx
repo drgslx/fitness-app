@@ -2,10 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth, useAuth } from "../auth";
-import "../navbar.css";
 
 function navItemClass({ isActive }) {
-  return `navbar-item${isActive ? " selected" : ""}`;
+  return `inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm font-medium text-[#d7dfd9] no-underline transition-colors hover:border-accent/30 hover:bg-[#203629] hover:text-white focus-visible:outline-2 focus-visible:outline-accent ${isActive ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink" : ""}`;
 }
 
 function FeatureMenu({ label, pathPrefix, items }) {
@@ -33,22 +32,20 @@ function FeatureMenu({ label, pathPrefix, items }) {
   }, []);
 
   return (
-    <div className="navbar-workouts" ref={containerRef}>
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
-        className={`navbar-item navbar-workouts-trigger${
-          selected ? " selected" : ""
-        }`}
+        className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm font-medium text-[#d7dfd9] no-underline transition-colors hover:border-accent/30 hover:bg-[#203629] hover:text-white focus-visible:outline-2 focus-visible:outline-accent ${selected ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink" : ""}`}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((current) => !current)}
       >
         {label}
-        <span className={`navbar-chevron${open ? " open" : ""}`}>v</span>
+        <span className={`text-xs transition-transform ${open ? "rotate-180" : ""}`}>v</span>
       </button>
 
       {open && (
-        <div className="navbar-workouts-menu" role="menu">
+        <div className="absolute left-0 top-[calc(100%+8px)] z-[1000] flex w-[min(300px,calc(100vw-32px))] flex-col gap-1 rounded-xl border border-white/15 bg-[#14221a] p-2 shadow-2xl [&_a]:flex [&_a]:w-full [&_a]:flex-col [&_a]:items-start [&_a]:text-left [&_small]:text-xs [&_small]:text-muted" role="menu">
           {items.map((item) => (
             <NavLink
               key={item.to}
@@ -70,12 +67,12 @@ export default function Navbar() {
   const { user, admin } = useAuth();
 
   return (
-    <nav className="app-navbar">
-      <Link className="navbar-brand" to="/">
+    <nav className="sticky top-0 z-50 flex min-h-[64px] flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#09100cee] px-4 py-2 backdrop-blur-lg md:px-[5vw]">
+      <Link className="font-bold tracking-[.12em] text-accent no-underline" to="/">
         ATHLETICA
       </Link>
 
-      <div className="navbar-links">
+      <div className="flex flex-wrap items-center gap-1">
         <NavLink to="/articles" className={navItemClass}>
           Articole
         </NavLink>
@@ -148,7 +145,7 @@ export default function Navbar() {
         {user ? (
           <button
             type="button"
-            className="navbar-item navbar-signout"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm font-medium text-[#d7dfd9] no-underline transition-colors hover:border-accent/30 hover:bg-[#203629] hover:text-white focus-visible:outline-2 focus-visible:outline-accent"
             onClick={() => signOut(auth)}
           >
             Deconectare

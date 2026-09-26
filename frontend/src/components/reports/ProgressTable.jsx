@@ -1,6 +1,6 @@
 import React from 'react';
 export default function ProgressTable({ columns, rows, rowKey, caption }) {
-  return <div className="progress-table-wrap"><table className="progress-table">
+  return <div className="max-w-full overflow-x-auto"><table className="w-full [&_caption]:py-2 [&_caption]:text-left [&_caption]:font-bold">
     {caption && <caption>{caption}</caption>}
     <thead><tr>{columns.map(column => <th scope="col" key={column.key}>{column.label}</th>)}</tr></thead>
     <tbody>{rows.map(row => <tr key={rowKey(row)}>{columns.map(column =>
