@@ -65,8 +65,10 @@ export default function LoginPage() {
           {register ? "Înregistrare" : "Conectare"}
         </button>
       </form>
-      <p>
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
         <button
+          type="button"
+          className="w-full"
           disabled={busy}
           onClick={() =>
             run(() => signInWithPopup(auth, new GoogleAuthProvider()))
@@ -74,17 +76,22 @@ export default function LoginPage() {
         >
           Continuă cu Google
         </button>
-      </p>
-      <button disabled={busy} onClick={() => setRegister(!register)}>
-        {register ? "Am deja cont" : "Creează un cont"}
-      </button>
+        <button
+          type="button"
+          className="w-full"
+          disabled={busy}
+          onClick={() => setRegister(!register)}
+        >
+          {register ? "Am deja cont" : "Creează un cont"}
+        </button>
+      </div>
       {error && (
-        <p role="alert" className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]">
+        <p role="alert" className="mt-4 rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]">
           {error}
         </p>
       )}
-      <p>
-        <Link to="/articles">Înapoi la articole</Link>
+      <p className="mt-5">
+        <Link to="/">Înapoi la homepage</Link>
       </p>
     </main>
   );
