@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, send, localDate } from "../api/client";
 import { useAuth } from "../auth";
 import NutritionProgressPanel from "../features/nutrition/NutritionProgressPanel";
@@ -80,7 +80,8 @@ export default function NutritionJournalPage() {
     (sum, item) => sum + (item.snapshot.calories * item.grams) / 100,
     0
   );
-  const activeGoal = goals.find((item) => item.effective_from <= day);
+  const latestGoal = goals.find((item) => item.effective_from <= day);
+  const activeGoal = latestGoal && (!latestGoal.valid_until || latestGoal.valid_until >= day) ? latestGoal : null;
   const protein = entries.reduce(
     (sum, item) =>
       sum + ((item.snapshot.nutrients.protein || 0) * item.grams) / 100,
@@ -504,6 +505,7 @@ export default function NutritionJournalPage() {
             }}
           >
             <h2>Seteaza obiectivul</h2>
+            <p className="text-sm text-muted">Salvarea manuala opreste sincronizarea calorica din profil. Pentru calcul din greutate, inaltime si activitate, deschide <Link to="/profile">Profilul meu</Link>.</p>
             <div className="grid gap-3 md:grid-cols-2">
               <label>
                 Incepand cu
@@ -594,6 +596,8 @@ export default function NutritionJournalPage() {
               {types.find((type) => type.key === item.goal_type)?.label ||
                 item.goal_type}{" "}
               - {item.calories} kcal - {item.protein} g proteine{" "}
+              {item.source === "profile" && <span className="text-muted">(din profil)</span>}
+              {item.valid_until && <span className="text-amber-200"> Suspendat dupa {item.valid_until} </span>}
               <button
                 type="button"
                 onClick={() =>

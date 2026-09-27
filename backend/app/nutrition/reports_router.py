@@ -9,25 +9,20 @@ from app.core.security import current_user
 from app.db.session import get_db
 from app.models.recipe import RecipeDiaryEntry
 from app.models.tracking import DiaryEntry, NutritionGoal
+from app.services.profile import is_valid_goal
 
 
 router = APIRouter(tags=["nutrition-reports"])
 
 
-@router.get("/nutrition-report")
-def report(
-    start: date,
-    end: date,
-    user=Depends(current_user),
-    db: Session = Depends(get_db),
-):
+def build_nutrition_report(db, user_id, start, end):
     validate_date_range(start, end)
 
     days = {}
     target_rows = db.scalars(
         select(NutritionGoal)
         .where(
-            NutritionGoal.user_id == user["uid"],
+            NutritionGoal.user_id == user_id,
             NutritionGoal.effective_from <= end,
         )
         .order_by(NutritionGoal.effective_from)
@@ -41,6 +36,8 @@ def report(
             if goal.effective_from <= current_day
         ]
         goal = applicable[-1] if applicable else None
+        if not is_valid_goal(goal, current_day):
+            goal = None
         days[current_day] = {
             "day": current_day.isoformat(),
             "entries": 0,
@@ -53,7 +50,7 @@ def report(
     entries = list(
         db.scalars(
             select(DiaryEntry).where(
-                DiaryEntry.user_id == user["uid"],
+                DiaryEntry.user_id == user_id,
                 DiaryEntry.day.between(start, end),
             )
         )
@@ -61,7 +58,7 @@ def report(
     entries += list(
         db.scalars(
             select(RecipeDiaryEntry).where(
-                RecipeDiaryEntry.user_id == user["uid"],
+                RecipeDiaryEntry.user_id == user_id,
                 RecipeDiaryEntry.day.between(start, end),
             )
         )
@@ -135,3 +132,8 @@ def report(
         ],
         "weeks": list(weeks.values()),
     }
+
+
+@router.get("/nutrition-report")
+def report(start: date, end: date, user=Depends(current_user), db: Session = Depends(get_db)):
+    return build_nutrition_report(db, user["uid"], start, end)

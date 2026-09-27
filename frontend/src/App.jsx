@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Link, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import Navbar from "./components/Navbar";
+import ProfilePage from "./pages/ProfilePage";
 import ArticlesPage from "./pages/ArticlesPage";
 import ArticlePage from "./pages/ArticlePage";
 import AdminPage from "./pages/AdminPage";
@@ -41,6 +42,7 @@ function Layout() {
         <Route path="/articles" element={<ArticlesPage />} />
         <Route path="/articles/:slug" element={<ArticlePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={<SignedIn><ProfilePage /></SignedIn>} />
         <Route path="/admin" element={<AdminRoute />} />
 
         <Route

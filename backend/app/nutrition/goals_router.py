@@ -6,6 +6,7 @@ from app.api.common import row, save
 from app.core.security import current_user, require_admin
 from app.db.session import get_db
 from app.models.tracking import GoalType, NutritionGoal
+from app.models.profile import UserProfile
 from app.schemas.tracking import GoalIn, GoalTypeIn
 
 
@@ -57,6 +58,10 @@ def set_goal(
     if not db.get(GoalType, data.goal_type):
         raise HTTPException(status_code=422, detail="Unknown goal type")
 
+    profile = db.scalar(select(UserProfile).where(UserProfile.user_id == user["uid"]).with_for_update())
+    if profile:
+        profile.auto_calories = False
+
     goal = db.scalar(
         select(NutritionGoal).where(
             NutritionGoal.user_id == user["uid"],
@@ -67,4 +72,7 @@ def set_goal(
         goal = NutritionGoal(user_id=user["uid"])
     for key, value in data.model_dump().items():
         setattr(goal, key, value)
+    goal.source = "manual"
+    goal.calculation = None
+    goal.valid_until = None
     return save(db, goal)

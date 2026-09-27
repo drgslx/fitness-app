@@ -122,3 +122,6 @@ class NutritionGoal(Base):
     protein: Mapped[float] = mapped_column(Float)
     pace_kg_week: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str] = mapped_column(String(1000), default="")
+    source: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
+    calculation: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)

@@ -142,6 +142,8 @@ export default function Navbar() {
           </NavLink>
         )}
 
+        {user && <NavLink to="/profile" className={navItemClass}>Profil</NavLink>}
+
         {user ? (
           <button
             type="button"
