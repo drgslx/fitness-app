@@ -171,7 +171,6 @@ function ProfileDashboard({ user }) {
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div><h1 className="mb-1 text-3xl">Profilul meu</h1>
         <p className="text-muted">{user.displayName || "Cont ATHLETICA"}{user.email && ` · ${user.email}`}</p></div>
-      <button type="button" className={secondary} disabled={busy} onClick={refresh}>Actualizeaza datele</button>
     </header>
     <nav aria-label="Sectiuni profil" className="flex max-w-full flex-nowrap gap-2 overflow-x-auto rounded-xl border border-white/10 bg-surface/60 p-2">
       {[
