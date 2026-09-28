@@ -3,428 +3,93 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 
 const features = [
-  {
-    icon: "🏋️",
-    title: "Planifică antrenamentele",
-    description:
-      "Creează sesiuni, urmărește exercițiile și construiește un program adaptat obiectivelor tale.",
-  },
-  {
-    icon: "🍽️",
-    title: "Urmărește alimentația",
-    description:
-      "Adaugă mese, urmărește caloriile și macronutrienții și păstrează totul într-un singur loc.",
-  },
-  {
-    icon: "📈",
-    title: "Vezi-ți progresul",
-    description:
-      "Monitorizează greutatea, activitatea și evoluția în timp prin date și statistici clare.",
-  },
-  {
-    icon: "📚",
-    title: "Citește articole",
-    description:
-      "Accesează informații despre antrenament, nutriție, recuperare și progres.",
-  },
+  { icon: "training", title: "Planifică antrenamentele", text: "Alege un sport, creează-ți programul și adaptează-l obiectivelor tale.", to: "/workouts/sessions" },
+  { icon: "food", title: "Urmărește alimentația", text: "Adaugă mese, calculează calorii și urmărește nutrienții din jurnal.", to: "/nutrition" },
+  { icon: "progress", title: "Vezi-ți progresul", text: "Greutate, activitate și obiective. Toate într-un singur loc.", to: "/profile" },
+  { icon: "book", title: "Citește articole", text: "Informații despre antrenament, nutriție și recuperare.", to: "/articles" },
 ];
 
-const progressBars = [
-  72,
-  68,
-  63,
-  66,
-  59,
-  55,
-  58,
-  49,
-  46,
-  43,
-  39,
-  36,
-];
+function Icon({ name, className = "h-5 w-5" }) {
+  const paths = {
+    training: <><path d="M6 7v10M3 9v6m15-8v10m3-8v6M6 12h12" /></>,
+    food: <><path d="M4 3v5a3 3 0 0 0 6 0V3M7 3v18m12 0V3c-4 3-4 10 0 10" /></>,
+    progress: <><path d="M5 20v-6m7 6V9m7 11V4" strokeWidth="3" /></>,
+    book: <><path d="M12 5v15m0-15C9 3 5 3 2 4v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z" /></>,
+    user: <><circle cx="12" cy="7" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></>,
+  };
+  return <svg className={`shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
+
+const pill = "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent";
+
+function ProgressPreview() {
+  return (
+    <div className="relative min-w-0 rounded-2xl border border-white/10 bg-[#172322]/90 p-4 shadow-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-bold text-white">Progresul meu</span>
+        <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] text-muted">Previzualizare ilustrativă</span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {[["user", "Greutate"], ["training", "Sesiuni"], ["food", "Calorii"]].map(([icon, label]) => (
+          <div key={label} className="rounded-lg border border-white/5 bg-white/5 p-2">
+            <Icon name={icon} className="mb-1 h-4 w-4 text-accent" />
+            <span className="block text-xs font-semibold text-white">{label}</span>
+            <span className="text-[10px] text-muted">Din profilul tău</span>
+          </div>
+        ))}
+      </div>
+      <svg className="mt-3 h-28 w-full" viewBox="0 0 300 110" role="img" aria-label="Ilustrație a unui grafic de progres, fără date personale">
+        {[20, 45, 70, 95].map(y => <path key={y} d={`M0 ${y}H300`} stroke="#ffffff0c" />)}
+        <path d="M0 22 18 35 34 39 50 34 67 50 85 52 100 47 118 62 135 60 151 71 170 68 188 82 205 76 222 84 240 80 257 89 275 85 300 93V110H0Z" fill="#72f29c0c" />
+        <path d="M0 22 18 35 34 39 50 34 67 50 85 52 100 47 118 62 135 60 151 71 170 68 188 82 205 76 222 84 240 80 257 89 275 85 300 93" fill="none" stroke="#9df5b7" strokeWidth="2" strokeLinejoin="round" />
+      </svg>
+      <Link to="/profile" className="text-xs font-semibold">Descoperă profilul tău <span aria-hidden="true">↗</span></Link>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { user } = useAuth();
-
+  const accountPath = user ? "/profile" : "/login";
   return (
-    <main className="overflow-hidden">
-      {/* HERO */}
-      <section className="relative mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <div className="pointer-events-none absolute left-0 top-0 -z-10 h-[500px] w-[500px] rounded-full bg-accent/5 blur-3xl" />
-
-        <div className="grid items-center gap-10 lg:grid-cols-[0.9fr_1.4fr]">
-          {/* HERO COPY */}
-          <div className="relative z-10">
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.35em] text-accent sm:text-sm">
-              Mai mult decât un plan.
-              <br />
-              Un tu mai puternic.
-            </p>
-
-            <h1 className="max-w-[680px] text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl xl:text-[5.4rem]">
-              Construiește-ți
-              <br />
-              progresul cu
-              <br />
-              <span className="text-accent">ATHLETICA</span>
-            </h1>
-
-            <p className="mt-6 max-w-[650px] text-lg leading-8 text-muted sm:text-xl">
-              Planifică antrenamentele, urmărește alimentația și vezi-ți
-              progresul — totul într-un singur loc.
-            </p>
-
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                to="/workouts/sessions"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-accent bg-accent px-5 py-3 font-semibold text-ink no-underline transition duration-200 hover:-translate-y-0.5 hover:bg-[#8cf7ac] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                <span aria-hidden="true">🏋️</span>
-                Antrenamente
-                <span aria-hidden="true">→</span>
-              </Link>
-
-              <Link
-                to="/nutrition"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-white no-underline transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/10"
-              >
-                <span aria-hidden="true">🍽️</span>
-                Alimentație
-              </Link>
-
-              <Link
-                to="/articles"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-white no-underline transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/10"
-              >
-                <span aria-hidden="true">📖</span>
-                Articole
-              </Link>
-
-              {!user ? (
-                <Link
-                  to="/login"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-white no-underline transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/10"
-                >
-                  <span aria-hidden="true">👤</span>
-                  Intră în cont
-                </Link>
-              ) : (
-                <Link
-                  to="/profile"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-white no-underline transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/10"
-                >
-                  <span aria-hidden="true">👤</span>
-                  Profil
-                </Link>
-              )}
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
-              <span className="inline-flex items-center gap-2">
-                <span className="text-accent">✓</span>
-                Planuri personalizate
-              </span>
-
-              <span className="inline-flex items-center gap-2">
-                <span className="text-accent">✓</span>
-                Urmărire progres
-              </span>
-
-              <span className="inline-flex items-center gap-2">
-                <span className="text-accent">✓</span>
-                Nutriție
-              </span>
-
-              <span className="inline-flex items-center gap-2">
-                <span className="text-accent">✓</span>
-                Articole și sfaturi
-              </span>
-            </div>
+    <main className="w-full max-w-[1600px] overflow-hidden px-4 pb-6 pt-0 md:w-full md:px-6 md:pb-8 md:pt-0 lg:px-10">
+      <section aria-labelledby="home-title" className="relative isolate grid items-center lg:min-h-[420px] lg:grid-cols-[.9fr_1.3fr] xl:min-h-[450px]">
+        <div className="relative z-10 py-8 lg:-mr-20 lg:py-10">
+          <p className="mb-3 text-[10px] font-semibold uppercase leading-5 tracking-[.3em] text-[#9cbdad]">Mai mult decât un plan.<br />Un tu mai puternic.</p>
+          <h1 id="home-title" className="mb-3 max-w-[600px] text-[clamp(2.5rem,4.5vw,4.5rem)] leading-[1.02] font-bold tracking-[-.045em]">Construiește-ți<br />progresul cu<br /><span className="text-accent">ATHLETICA</span></h1>
+          <p className="max-w-[420px] text-sm leading-6 text-[#a8b8b1] xl:text-base">Planifică antrenamente, urmărește alimentația<br className="hidden sm:block" /> și vezi-ți progresul — totul într-un singur loc.</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link to="/workouts/sessions" className={`${pill} border-accent bg-accent text-ink hover:bg-[#a0f8b9] hover:text-ink`}><Icon name="training" className="h-4 w-4" />Antrenamente <span aria-hidden="true">→</span></Link>
+            <Link to="/nutrition" className={`${pill} border-white/10 bg-[#182724] text-copy hover:border-accent/50`}><Icon name="food" className="h-4 w-4" />Alimentație</Link>
+            <Link to="/articles" className={`${pill} border-white/10 bg-[#182724] text-copy hover:border-accent/50`}><Icon name="book" className="h-4 w-4" />Articole</Link>
+            <Link to={accountPath} className={`${pill} border-white/10 bg-[#182724] text-copy hover:border-accent/50`}><Icon name="user" className="h-4 w-4" />{user ? "Profilul meu" : "Intră în cont"}</Link>
           </div>
-
-          {/* IMAGE CARDS */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {/* TRAINING */}
-            <Link
-              to="/workouts/sessions"
-              className="group relative min-h-[360px] overflow-hidden rounded-[28px] border border-white/10 bg-surface no-underline shadow-2xl md:min-h-[500px]"
-            >
-              <img
-                src="/images/home-training.jpg"
-                alt="Antrenament de forță în sala de fitness"
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
-              />
-
-              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-black/5" />
-
-              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
-                  🏋️ Antrenamente
-                </p>
-
-                <h2 className="mt-2 text-xl font-bold text-white">
-                  Planifică și urmărește
-                </h2>
-
-                <p className="mt-2 text-sm leading-6 text-white/75">
-                  Creează sesiuni, urmărește exercițiile și vezi ce ai executat.
-                </p>
-              </div>
-            </Link>
-
-            {/* NUTRITION */}
-            <Link
-              to="/nutrition"
-              className="group relative min-h-[360px] overflow-hidden rounded-[28px] border border-white/10 bg-surface no-underline shadow-2xl md:min-h-[500px]"
-            >
-              <img
-                src="/images/home-nutrition.jpg"
-                alt="Masă sănătoasă cu proteine și legume"
-                loading="lazy"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
-              />
-
-              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-black/5" />
-
-              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
-                  🍽️ Alimentație
-                </p>
-
-                <h2 className="mt-2 text-xl font-bold text-white">
-                  Urmărește ce mănânci
-                </h2>
-
-                <p className="mt-2 text-sm leading-6 text-white/75">
-                  Monitorizează mesele, caloriile și macronutrienții zilnici.
-                </p>
-              </div>
-            </Link>
-
-            {/* PROGRESS */}
-            <Link
-              to="/profile"
-              className="group relative min-h-[360px] overflow-hidden rounded-[28px] border border-white/10 bg-surface no-underline shadow-2xl md:min-h-[500px]"
-            >
-              <img
-                src="/images/home-progress.jpg"
-                alt="Alergare și progres sportiv"
-                loading="lazy"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
-              />
-
-              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-black/5" />
-
-              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">
-                  📈 Progres
-                </p>
-
-                <h2 className="mt-2 text-xl font-bold text-white">
-                  Vezi cum evoluezi
-                </h2>
-
-                <p className="mt-2 text-sm leading-6 text-white/75">
-                  Urmărește greutatea, activitatea și progresul tău în timp.
-                </p>
-              </div>
-            </Link>
-          </div>
+          <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-[10px] text-[#9baea4]">
+            {["Planuri personalizate", "Urmărire progres", "Rețete și nutriție", "Articole și sfaturi"].map(label => <li key={label}><span className="mr-1 text-accent" aria-hidden="true">✓</span>{label}</li>)}
+          </ul>
+        </div>
+        <div className="relative -mx-4 aspect-[3/2] overflow-hidden rounded-t-2xl sm:mx-0 lg:-mr-10 lg:-ml-14 lg:aspect-auto lg:h-[420px] xl:h-[450px] lg:rounded-none">
+          <img src="/images/home/athletica-hero-960.jpg" srcSet="/images/home/athletica-hero-640.jpg 640w, /images/home/athletica-hero-960.jpg 960w, /images/home/athletica-hero-1440.jpg 1440w" sizes="(min-width: 1600px) 900px, (min-width: 1024px) 60vw, 100vw" width="1440" height="960" alt="Antrenament cu gantere, un bol cu ingrediente proaspete și alergare în aer liber" loading="eager" fetchPriority="high" decoding="async" className="h-full w-full object-cover" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink via-transparent to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-1/5 bg-gradient-to-r from-ink to-transparent lg:block" />
+        
         </div>
       </section>
 
-      {/* MAIN FEATURES */}
-      <section className="mx-auto max-w-[1500px] px-4 pb-12 sm:px-6 lg:px-8">
-        <div className="rounded-[30px] border border-white/10 bg-surface/90 p-5 shadow-2xl backdrop-blur-sm sm:p-7 lg:p-8">
-          <div className="grid gap-8 xl:grid-cols-[0.72fr_1.15fr_0.9fr]">
-            {/* INTRO */}
-            <div className="flex flex-col justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.25em] text-accent">
-                  Funcționalități principale
-                </p>
-
-                <h2 className="mt-4 text-4xl font-black leading-tight text-white lg:text-5xl">
-                  Tot ce ai nevoie pentru un{" "}
-                  <span className="text-accent">
-                    stil de viață mai sănătos
-                  </span>
-                </h2>
-
-                <p className="mt-5 max-w-[520px] leading-7 text-muted">
-                  ATHLETICA aduce într-un singur loc antrenamentele,
-                  alimentația, progresul și informațiile de care ai nevoie
-                  pentru a-ți urmări obiectivele.
-                </p>
-              </div>
-
-              <div>
-                <Link
-                  to={user ? "/profile" : "/login"}
-                  className="mt-7 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-ink no-underline transition duration-200 hover:-translate-y-0.5 hover:bg-[#8cf7ac]"
-                >
-                  {user ? "Vezi progresul tău" : "Începe acum"}
-                  <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* FEATURE GRID */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {features.map((feature) => (
-                <article
-                  key={feature.title}
-                  className="rounded-2xl border border-white/10 bg-[#0c1812] p-5 transition duration-200 hover:-translate-y-1 hover:border-accent/30 hover:bg-[#0f1d15]"
-                >
-                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-accent/15 bg-accent/10 text-xl">
-                    {feature.icon}
-                  </div>
-
-                  <h3 className="text-lg font-bold text-white">
-                    {feature.title}
-                  </h3>
-
-                  <p className="mt-2 text-sm leading-6 text-muted">
-                    {feature.description}
-                  </p>
-                </article>
-              ))}
-            </div>
-
-            {/* DASHBOARD PREVIEW */}
-            <div className="rounded-2xl border border-white/10 bg-[#09130e] p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
-                    Progres
-                  </p>
-
-                  <h3 className="mt-1 text-xl font-bold text-white">
-                    Progresul meu
-                  </h3>
-                </div>
-
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-muted">
-                  Ultimele 3 luni
-                </span>
-              </div>
-
-              <div className="mt-5 grid grid-cols-3 gap-2">
-                <div className="rounded-xl border border-white/5 bg-white/5 p-3">
-                  <p className="text-xs text-muted">
-                    Greutate
-                  </p>
-
-                  <strong className="mt-1 block text-lg text-white">
-                    76.4 kg
-                  </strong>
-
-                  <span className="text-xs font-semibold text-accent">
-                    -4.2 kg
-                  </span>
-                </div>
-
-                <div className="rounded-xl border border-white/5 bg-white/5 p-3">
-                  <p className="text-xs text-muted">
-                    Sesiuni
-                  </p>
-
-                  <strong className="mt-1 block text-lg text-white">
-                    12
-                  </strong>
-
-                  <span className="text-xs text-muted">
-                    antrenamente
-                  </span>
-                </div>
-
-                <div className="rounded-xl border border-white/5 bg-white/5 p-3">
-                  <p className="text-xs text-muted">
-                    Calorii
-                  </p>
-
-                  <strong className="mt-1 block text-lg text-white">
-                    2340
-                  </strong>
-
-                  <span className="text-xs text-muted">
-                    medie / zi
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
-                <div className="flex h-40 items-end gap-2">
-                  {progressBars.map((height, index) => (
-                    <div
-                      key={`${height}-${index}`}
-                      className="flex-1 rounded-t bg-accent/70 transition hover:bg-accent"
-                      style={{
-                        height: `${height}%`,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-3 flex justify-between text-xs text-muted">
-                  <span>Ian</span>
-                  <span>Feb</span>
-                  <span>Mar</span>
-                  <span>Apr</span>
-                </div>
-              </div>
-
-              <p className="mt-4 text-sm leading-6 text-muted">
-                Urmărește greutatea, activitatea și evoluția ta în timp.
-              </p>
-            </div>
-          </div>
+      <section aria-labelledby="features-title" className="relative mt-3 grid gap-5 rounded-2xl border border-white/5 bg-gradient-to-br from-[#162723] to-[#0c1612] p-5 sm:p-6 lg:grid-cols-[.85fr_1.25fr_1.05fr] lg:gap-5 lg:p-7">
+        <div>
+          <p className="mb-2 text-[9px] font-semibold uppercase tracking-[.3em] text-[#80b495]">Funcționalități principale</p>
+          <h2 id="features-title" className="mb-3 text-2xl leading-[1.12] tracking-tight xl:text-[26px]">Tot ce ai nevoie<br />pentru un stil de viață<br /><span className="text-[#a1e9b8]">mai sănătos</span></h2>
+          <p className="max-w-sm text-xs leading-5 text-muted">ATHLETICA îți oferă instrumente pentru antrenament, alimentație, progres și educație, ca să îți atingi obiectivele mai ușor și mai rapid.</p>
+          <Link to={accountPath} className={`${pill} mt-4 border-accent bg-accent text-ink hover:bg-[#a0f8b9] hover:text-ink`}>{user ? "Deschide profilul" : "Începe acum"} <span aria-hidden="true">→</span></Link>
         </div>
-      </section>
-
-      {/* SECONDARY CTA */}
-      <section className="mx-auto max-w-[1500px] px-4 pb-14 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-[30px] border border-accent/20 bg-gradient-to-br from-accent/10 via-surface to-surface p-6 sm:p-8 lg:p-10">
-          <div className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
-
-          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.25em] text-accent">
-                ATHLETICA
-              </p>
-
-              <h2 className="mt-3 max-w-[700px] text-3xl font-black text-white sm:text-4xl">
-                Fă-ți progresul vizibil.
-              </h2>
-
-              <p className="mt-3 max-w-[700px] leading-7 text-muted">
-                Planifică, înregistrează și urmărește ce faci. Datele tale devin
-                mai utile atunci când le vezi împreună.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/workouts/sessions"
-                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-ink no-underline transition hover:bg-[#8cf7ac]"
-              >
-                Vezi antrenamentele
-              </Link>
-
-              <Link
-                to={user ? "/profile" : "/login"}
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-white no-underline transition hover:bg-white/10"
-              >
-                {user ? "Profilul meu" : "Creează cont"}
-              </Link>
-            </div>
-          </div>
+        <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+          {features.map(feature => <Link key={feature.title} to={feature.to} className="flex items-start gap-3 rounded-xl border border-white/5 bg-[#1a2b2a]/70 p-3 text-copy no-underline transition-colors hover:border-accent/30 hover:bg-[#203631]"><span className="rounded-xl bg-accent/10 p-2 text-accent"><Icon name={feature.icon} /></span><div className="min-w-0 pt-1"><h3 className="mb-1 font-sans text-xs font-bold leading-4">{feature.title}</h3><p className="text-[11px] leading-4 text-muted">{feature.text}</p></div></Link>)}
+        </div>
+        <div className="relative isolate min-w-0 self-center">
+          <img src="/images/home/athletica-hero-640.jpg" width="640" height="427" loading="lazy" decoding="async" alt="" className="pointer-events-none absolute -right-4 -bottom-3 -z-10 h-full w-3/4 rounded-xl object-cover object-right opacity-20" />
+          <ProgressPreview />
+          <p className="mt-3 text-right text-xs italic text-muted">„Disciplina azi, rezultate mâine.”</p>
         </div>
       </section>
     </main>
