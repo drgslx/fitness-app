@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api, localDate, send } from "../api/client";
+import EnergyPanel from "../components/activity/EnergyPanel";
 import TrendChart from "../components/reports/TrendChart";
 import { dayList, formatValue, ranges } from "../components/reports/periods";
 
@@ -10,14 +11,14 @@ const secondary = "border-white/20 bg-transparent text-copy hover:bg-raised";
 const danger = "border-red-400/30 bg-transparent text-red-200 hover:bg-red-950";
 const activityOptions = [
   ["sedentary", "Sedentar — fara antrenamente, predominant asezat"],
-  ["light", "Usor activ — aproximativ 1–3 antrenamente / saptamana SAU munca usoara SAU mers pe jos pasi putini"],
-  ["moderate", "Moderat — aproximativ 3–5 antrenamente / saptamana SAU munca fizica usoara SAU mers pe jos 5.000–10.000 pasi / zi"],
-  ["high", "Foarte activ — aproximativ 6–7 antrenamente / saptamana SAU munca fizica intensa SAU mers pe jos 10.000–15.000 pasi / zi"],
-  ["very_high", "Extrem de activ — munca fizica si antrenamente intense SAU mult sport de performanta, peste 15.000 pasi / zi"],
+  ["light", "Usor activ — aproximativ 1–3 antrenamente / saptamana"],
+  ["moderate", "Moderat — aproximativ 3–5 antrenamente / saptamana"],
+  ["high", "Foarte activ — aproximativ 6–7 antrenamente / saptamana"],
+  ["very_high", "Extrem de activ — munca fizica si antrenamente intense"],
 ];
 const goalLabels = { lose: "Slabire", maintain: "Mentinere", gain: "Crestere masa musculara" };
 const blankProfile = () => ({
-  sex: "", birth_date: "", height_cm: "", activity_level: "", goal: "maintain",
+  sex: "", birth_date: "", height_cm: "", activity_level: "sedentary", goal: "maintain",
   deficit_percent: 10, surplus_percent: 10, target_weight_kg: "",
   pregnant_or_breastfeeding: false, auto_calories: true,
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Bucharest",
@@ -182,6 +183,8 @@ function ProfileDashboard({ user }) {
           detail={data.active_goal ? `Din ${data.active_goal.effective_from} · ${data.active_goal.source === "profile" ? "din profil" : "manuala"}` : "Nicio tinta activa"} />
       </div>
 
+      <EnergyPanel today={today} revision={revision} onSaved={refresh} />
+
       <div className="grid items-start gap-3 xl:grid-cols-[1.3fr_1fr]">
         <section className={panel} aria-labelledby="profile-settings-title">
           <h2 id="profile-settings-title" className="text-xl">Date personale si obiectiv</h2>
@@ -196,7 +199,7 @@ function ProfileDashboard({ user }) {
                 <label>Obiectiv<select aria-label="Obiectiv" value={form.goal} onChange={(e) => change("goal", e.target.value)}>
                   {Object.entries(goalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select></label>
-                <label className="sm:col-span-2">Nivel de activitate<select required value={form.activity_level} onChange={(e) => change("activity_level", e.target.value)}>
+                <label className="sm:col-span-2">Activitate initiala (doar fallback)<select required value={form.activity_level} onChange={(e) => change("activity_level", e.target.value)}>
                   <option value="">Alege nivelul aproximativ</option>
                   {activityOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select></label>
@@ -238,8 +241,8 @@ function ProfileDashboard({ user }) {
             {recommendation.effective_goal === "lose" && <p className="text-xs text-muted">* Echivalent energetic simplificat (7.700 kcal/kg), nu o predictie a kilogramelor pierdute. Apa, compozitia corporala si adaptarea metabolica schimba evolutia reala.</p>}
             {recommendation.warnings.map((warning) => <p key={warning} className="text-sm text-amber-200">{warning}</p>)}
           </> : <p>{recommendation.reason}</p>}
-          <p className="text-xs text-muted">Estimare Mifflin–St Jeor × activitate. Se recalculeaza din ultima greutate la salvare. Pentru adulti; nevoile individuale pot diferi. Caloriile antrenamentelor nu se adauga separat peste factorul de activitate.</p>
-          <h3 className="text-md font-semibold">Aceasta este doar o estimare. Un trainer poate oferi o evaluare mai precisa.</h3>
+          <p className="text-sm text-accent">{recommendation.maintenance_source === "activity_average" ? "Baza: media activitatii inregistrate" : "Baza: estimare initiala; completeaza activitatea zilnica"}</p>
+          <p className="text-xs text-muted">Estimare Mifflin–St Jeor. Dupa minimum 4 zile complete din ultimele 7, mentinerea foloseste media activitatii declarate. Pana atunci folosim factorul initial. Nevoile individuale pot diferi.</p>
           <p className="text-xs text-muted">{data.profile?.auto_calories ? "Sincronizare automata activata." : "Tinta din jurnal ramane manuala sau fixata la ultima valoare."} {data.active_goal?.protein ? `Tinta de proteine pastrata: ${formatValue(data.active_goal.protein)} g/zi.` : "Poti configura separat tinta de proteine in jurnal."}</p>
         </section>
       </div>

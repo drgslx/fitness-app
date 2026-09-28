@@ -229,6 +229,7 @@ export default function WorkoutSessionsPage() {
 
                     <td>
                       <strong>{plan.title}</strong>
+                    {plan.duration_minutes && <small className="block text-muted">{plan.duration_minutes} min · {plan.intensity}</small>}
 
                       {plan.notes && (
                         <small className="mt-1 block text-sm font-normal text-muted">

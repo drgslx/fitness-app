@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import EnergyFields from "../../../../components/activity/EnergyFields";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, send, localDate } from "../../../../api/client";
 
 let nextExerciseKey = 0;
@@ -23,6 +24,11 @@ function createSession(session) {
     day: session?.day || localDate(),
     title: session?.title || "",
     sport: session?.sport || "",
+    sport_type_id: session?.sport_type_id ?? null,
+    activity_type: session?.activity_type ?? null,
+    duration_minutes: session?.duration_minutes ?? null,
+    intensity: session?.intensity || "moderate",
+    steps_included: session?.steps_included ?? null,
     notes: session?.notes || "",
     exercises: Array.isArray(session?.exercises)
       ? session.exercises.map(createExercise)
@@ -69,12 +75,14 @@ export default function WorkoutSessionForm({
   editing = false,
 }) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [message, setMessage] = useState("");
   const draftRef = useRef(null);
-  const [form, setForm] = useState(() => createSession(initialSession));
+  const [form, setForm] = useState(() => createSession(initialSession || { activity_type: params.get("activity"), exercises: [] }));
   const [sports, setSports] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [activityTypes, setActivityTypes] = useState([]);
   const [exerciseCatalog, setExerciseCatalog] = useState([]);
 
   const [mode, setMode] = useState("new");
@@ -109,15 +117,22 @@ export default function WorkoutSessionForm({
       setError("");
 
       try {
-        const [sportsResult, templatesResult] = await Promise.all([
+        const [sportsResult, templatesResult, typesResult] = await Promise.all([
           api("/sport-types"),
           editing ? Promise.resolve([]) : api("/workout-templates"),
+          api("/activity-types"),
         ]);
 
         if (!active) return;
 
         setSports(sportsResult);
         setTemplates(templatesResult);
+        setActivityTypes(typesResult);
+        if (!initialSession) setForm((current) => {
+          const preset = typesResult.find((type) => type.key === current.activity_type);
+          return preset ? { ...current, title: current.title || preset.label,
+            duration_minutes: current.duration_minutes ?? preset.duration_minutes } : current;
+        });
       } catch (currentError) {
         if (active) setError(currentError.message);
       } finally {
@@ -196,12 +211,16 @@ export default function WorkoutSessionForm({
   }
 
   function changeSport(value) {
-    const firstExercise = createExercise();
+    const selected = sports.find((s) => s.name === value);
 
     setForm((current) => ({
       ...current,
       sport: value,
-      exercises: [firstExercise],
+      sport_type_id: selected?.id ?? null,
+      activity_type: selected?.activity_type ?? current.activity_type,
+      duration_minutes: selected?.default_duration_minutes ?? current.duration_minutes,
+      intensity: selected?.default_intensity || "moderate",
+      exercises: [],
     }));
   }
 
@@ -341,6 +360,10 @@ export default function WorkoutSessionForm({
           name: payload.title,
           sport: payload.sport,
           notes: payload.notes,
+          sport_type_id: payload.sport_type_id,
+          activity_type: payload.activity_type,
+          duration_minutes: payload.duration_minutes,
+          intensity: payload.intensity,
           exercises: payload.exercises,
         });
         setTemplates((current) => current.map((item) =>
@@ -535,6 +558,7 @@ export default function WorkoutSessionForm({
                 required
                 disabled={busy}
                 value={form.sport}
+                aria-label="Sport"
                 onChange={(event) => changeSport(event.target.value)}
               >
                 <option value="">Alege sportul</option>
@@ -553,6 +577,36 @@ export default function WorkoutSessionForm({
               </select>
             </label>
           </div>
+
+          <EnergyFields value={form} day={form.day} disabled={busy} template={Boolean(editingTemplate)}
+            onChange={(changes) => setForm((current) => ({ ...current, ...changes }))} />
+          {selectedSport && !selectedSport.is_system && form.activity_type && form.duration_minutes && <button type="button" disabled={busy} onClick={async () => {
+            if (mutationRef.current) return;
+            mutationRef.current = true; setBusy(true); setError("");
+            try {
+              const updated = await send(`/sport-types/${selectedSport.id}/defaults`, "PUT", {
+                activity_type: form.activity_type, default_duration_minutes: form.duration_minutes, default_intensity: form.intensity,
+              });
+              setSports((current) => current.map((sport) => sport.id === updated.id ? updated : sport));
+              setMessage("Durata si intensitatea implicite au fost salvate pentru acest sport. Sesiunile existente raman neschimbate.");
+            } catch (err) { setError(err.message); }
+            finally { mutationRef.current = false; setBusy(false); }
+          }}>Pastreaza durata si intensitatea pentru acest sport</button>}
+          {!selectedSport && form.activity_type && <button type="button" disabled={busy} onClick={async () => {
+            if (mutationRef.current) return;
+            const type = activityTypes.find((item) => item.key === form.activity_type);
+            if (!type) return;
+            mutationRef.current = true; setBusy(true); setError("");
+            try {
+              const existing = sports.find((item) => item.name.toLowerCase() === type.label.toLowerCase());
+              const sport = existing || await send("/sport-types", "POST", { name: type.label, activity_type: type.key,
+                default_duration_minutes: form.duration_minutes, default_intensity: form.intensity });
+              if (!existing) setSports((items) => [...items, sport]);
+              setForm((current) => ({ ...current, sport: sport.name, sport_type_id: sport.id }));
+            } catch (err) { setError(err.message); }
+            finally { mutationRef.current = false; setBusy(false); }
+          }}>Foloseste acest tip in catalogul meu de sporturi</button>}
+          {!selectedSport && <p className="my-2 text-sm">Alege sportul existent sau foloseste tipul de mai sus. Exercitiile sunt optionale pentru o sesiune cu durata.</p>}
 
           <label>
             Note

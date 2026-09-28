@@ -12,6 +12,7 @@ async function setup(page, existing = false) {
   const state = { today, profile: existing ? { ...baseProfile } : null, weights: [],
     recommendation: missing, active_goal: null, weight_change_kg: null };
   const requests = [];
+  await page.route("**/api/v1/energy", (route) => route.fulfill({ json: { available: false, reason: "Completeaza profilul" } }));
   // Test-only module interception: no authentication bypass exists in application code.
   await page.route(/\/src\/auth\.jsx(?:\?.*)?$/, (route) => route.fulfill({ contentType: "application/javascript", body: `
     const user = { uid: "test-user", email: "ana@example.test", displayName: "Ana", getIdToken: async () => "test-token" };
@@ -58,7 +59,7 @@ test("profile goal controls, save, weight correction, deletion and navigation", 
   await page.getByLabel("Sex folosit in calcul").selectOption("male");
   await page.getByLabel("Data nasterii").fill("1996-01-01");
   await page.getByLabel("Inaltime (cm)").fill("176");
-  await page.getByLabel("Nivel de activitate").selectOption("light");
+  await page.getByLabel("Activitate initiala (doar fallback)").selectOption("light");
   await expect(page.getByLabel("Deficit caloric")).toHaveCount(0);
   await expect(page.getByLabel("Surplus caloric")).toHaveCount(0);
   await page.getByLabel("Obiectiv", { exact: true }).selectOption("lose");
