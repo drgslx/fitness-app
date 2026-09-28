@@ -7,6 +7,7 @@ from app.core.security import current_user
 from app.db.session import get_db
 from app.models.tracking import WorkoutTemplate
 from app.schemas.tracking import WorkoutTemplateIn
+from app.training.energy_fields import validate_session
 
 
 router = APIRouter(tags=["training-templates"])
@@ -36,7 +37,7 @@ def create_workout_template(
 ):
     template = WorkoutTemplate(
         user_id=user["uid"],
-        **payload.model_dump(),
+        **validate_session(db, user["uid"], payload.model_dump()),
     )
     db.add(template)
     db.commit()

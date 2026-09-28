@@ -1,5 +1,4 @@
-const { test, expect } = require("@playwright/test");
-
+import { test, expect } from "@playwright/test";
 const today = "2026-09-26";
 const baseProfile = {
   sex: "male", birth_date: "1996-01-01", height_cm: 176, activity_level: "moderate",
@@ -12,6 +11,7 @@ async function setup(page, existing = false) {
   const state = { today, profile: existing ? { ...baseProfile } : null, weights: [],
     recommendation: missing, active_goal: null, weight_change_kg: null };
   const requests = [];
+  await page.route("**/api/v1/energy", (route) => route.fulfill({ json: { available: false, reason: "Completeaza profilul" } }));
   // Test-only module interception: no authentication bypass exists in application code.
   await page.route(/\/src\/auth\.jsx(?:\?.*)?$/, (route) => route.fulfill({ contentType: "application/javascript", body: `
     const user = { uid: "test-user", email: "ana@example.test", displayName: "Ana", getIdToken: async () => "test-token" };
@@ -58,7 +58,7 @@ test("profile goal controls, save, weight correction, deletion and navigation", 
   await page.getByLabel("Sex folosit in calcul").selectOption("male");
   await page.getByLabel("Data nasterii").fill("1996-01-01");
   await page.getByLabel("Inaltime (cm)").fill("176");
-  await page.getByLabel("Nivel de activitate").selectOption("light");
+  await page.getByLabel("Activitate initiala (doar fallback)").selectOption("light");
   await expect(page.getByLabel("Deficit caloric")).toHaveCount(0);
   await expect(page.getByLabel("Surplus caloric")).toHaveCount(0);
   await page.getByLabel("Obiectiv", { exact: true }).selectOption("lose");
@@ -69,6 +69,7 @@ test("profile goal controls, save, weight correction, deletion and navigation", 
   await page.getByLabel("Surplus caloric").selectOption("15");
   await page.getByLabel("Obiectiv", { exact: true }).selectOption("maintain");
   await page.getByRole("button", { name: "Salveaza profilul", exact: true }).click();
+  await page.getByRole("button", { name: "Greutate și progres", exact: true }).click();
   await expect(page.getByRole("button", { name: "Salveaza greutatea" })).toBeVisible();
   expect(requests[0].payload).toMatchObject({ goal: "maintain", deficit_percent: 20, surplus_percent: 15, activity_level: "light", height_cm: 176 });
   await page.getByLabel("Greutate (kg)", { exact: true }).fill("82");
@@ -102,4 +103,30 @@ test("compact mobile layout and errors preserve unsaved inputs", async ({ page }
   await expect(page.getByRole("alert")).toContainText("Serviciu indisponibil");
   await expect(page.getByLabel("Inaltime (cm)")).toHaveValue("180");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+
+test("tabs preserve drafts without additional requests", async ({ page }) => {
+  await setup(page, true);
+  const reads = [];
+  page.on("request", r => { if (r.method() === "GET" && r.url().includes("/api/v1/")) reads.push(r.url()); });
+  await page.goto("/profile");
+  await expect(page.getByText("Sala: 3 sesiuni", { exact: true })).toBeVisible();
+  await expect(page.locator("#profile-panel-energy")).toContainText("Completeaza profilul");
+  await page.getByLabel("Inaltime (cm)").fill("181");
+  const before = reads.length;
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.getByRole("button", { name: "Energia și activitatea zilnică", exact: true }).click();
+    await expect(page.locator("#profile-panel-energy")).toBeVisible();
+    await expect(page.locator("#profile-panel-personal")).toBeHidden();
+    await page.getByRole("button", { name: "Greutate și progres", exact: true }).click();
+    await page.getByLabel("Greutate (kg)", { exact: true }).fill("79.5");
+    await page.getByRole("button", { name: "Date personale și obiectiv", exact: true }).click();
+    await expect(page.getByLabel("Inaltime (cm)")).toHaveValue("181");
+    await page.getByRole("button", { name: "Greutate și progres", exact: true }).click();
+    await expect(page.getByLabel("Greutate (kg)", { exact: true })).toHaveValue("79.5");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+  expect(reads.length).toBe(before);
 });

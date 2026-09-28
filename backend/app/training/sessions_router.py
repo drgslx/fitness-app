@@ -10,6 +10,8 @@ from app.core.security import current_user
 from app.db.session import get_db
 from app.models.tracking import Workout, WorkoutLog, WorkoutTemplate
 from app.schemas.tracking import WorkoutIn
+from app.training.energy_fields import validate_session, ENERGY_FIELDS
+from app.services.energy import refresh_energy_goal, reopen_days
 
 
 router = APIRouter(tags=["training-sessions"])
@@ -50,7 +52,7 @@ def add_workout(
     user=Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    values = data.model_dump()
+    values = validate_session(db, user["uid"], data.model_dump())
     save_as_template = values.pop("save_as_template", False)
     template_name = values.pop("template_name", None)
 
@@ -69,6 +71,7 @@ def add_workout(
                 user_id=user["uid"],
                 name=final_template_name,
                 sport=values["sport"],
+                **{key: values.get(key) for key in ENERGY_FIELDS},
                 notes=values["notes"],
                 exercises=values["exercises"],
             )
@@ -87,11 +90,13 @@ def edit_workout(
     db: Session = Depends(get_db),
 ):
     plan = owned(db, Workout, item_id, user)
+    previous_day = plan.day
     save_as_template = data.save_as_template
     template_name = data.template_name
     values = data.model_dump(
         exclude={"save_as_template", "template_name"}
     )
+    values = validate_session(db, user["uid"], values)
     for key, value in values.items():
         setattr(plan, key, value)
 
@@ -107,13 +112,24 @@ def edit_workout(
                 user_id=user["uid"],
                 name=final_template_name,
                 sport=values["sport"],
+                **{key: values.get(key) for key in ENERGY_FIELDS},
                 notes=values["notes"],
                 exercises=deepcopy(values["exercises"]),
             )
         )
 
-    # One transaction: updating the session and creating the new template
-    # succeed or fail together. Existing workout logs remain historical copies.
+    log = db.scalar(select(WorkoutLog).where(
+        WorkoutLog.workout_id == item_id, WorkoutLog.user_id == user["uid"]
+    ))
+    if log:
+        log.day = plan.day
+        log.snapshot = {
+            "title": plan.title, "sport": plan.sport, "notes": plan.notes,
+            "exercises": deepcopy(plan.exercises),
+        }
+    reopen_days(db, user["uid"], previous_day, plan.day)
+    refresh_energy_goal(db, user["uid"])
+    # Editing a completed session updates its report in the same transaction.
     db.commit()
     db.refresh(plan)
     return row(plan)
@@ -125,7 +141,15 @@ def remove_workout(
     user=Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    db.delete(owned(db, Workout, item_id, user))
+    plan = owned(db, Workout, item_id, user)
+    log = db.scalar(select(WorkoutLog).where(
+        WorkoutLog.workout_id == item_id, WorkoutLog.user_id == user["uid"]
+    ))
+    if log:
+        db.delete(log)
+    db.delete(plan)
+    reopen_days(db, user["uid"], plan.day)
+    refresh_energy_goal(db, user["uid"])
     db.commit()
 
 
@@ -144,6 +168,8 @@ def complete(
     log = db.scalar(
         select(WorkoutLog).where(WorkoutLog.workout_id == item_id)
     )
+    if log is not None:
+        return row(log)
     if log is None:
         log = WorkoutLog(
             workout_id=plan.id,
@@ -156,7 +182,12 @@ def complete(
                 "exercises": plan.exercises,
             },
         )
-    return save(db, log)
+    db.add(log)
+    reopen_days(db, user["uid"], plan.day)
+    refresh_energy_goal(db, user["uid"])
+    db.commit()
+    db.refresh(log)
+    return row(log)
 
 
 @router.delete("/workouts/{item_id}/completion", status_code=204)
@@ -165,7 +196,7 @@ def uncomplete(
     user=Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    owned(db, Workout, item_id, user)
+    plan = owned(db, Workout, item_id, user)
     log = db.scalar(
         select(WorkoutLog).where(
             WorkoutLog.workout_id == item_id,
@@ -174,6 +205,8 @@ def uncomplete(
     )
     if log:
         db.delete(log)
+        reopen_days(db, user["uid"], plan.day)
+        refresh_energy_goal(db, user["uid"])
         db.commit()
 
 

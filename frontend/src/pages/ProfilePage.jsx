@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api, localDate, send } from "../api/client";
+import EnergyPanel from "../components/activity/EnergyPanel";
 import TrendChart from "../components/reports/TrendChart";
 import { dayList, formatValue, ranges } from "../components/reports/periods";
 
@@ -17,7 +18,7 @@ const activityOptions = [
 ];
 const goalLabels = { lose: "Slabire", maintain: "Mentinere", gain: "Crestere masa musculara" };
 const blankProfile = () => ({
-  sex: "", birth_date: "", height_cm: "", activity_level: "", goal: "maintain",
+  sex: "", birth_date: "", height_cm: "", activity_level: "sedentary", goal: "maintain",
   deficit_percent: 10, surplus_percent: 10, target_weight_kg: "",
   pregnant_or_breastfeeding: false, auto_calories: true,
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Bucharest",
@@ -86,6 +87,7 @@ function ProfileDashboard({ user }) {
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
   const [visibleWeights, setVisibleWeights] = useState(12);
+  const [tab, setTab] = useState("personal");
   const dirty = useRef(false);
   const saving = useRef(false);
   const request = useRef(0);
@@ -171,9 +173,26 @@ function ProfileDashboard({ user }) {
         <p className="text-muted">{user.displayName || "Cont ATHLETICA"}{user.email && ` · ${user.email}`}</p></div>
       <button type="button" className={secondary} disabled={busy} onClick={refresh}>Actualizeaza datele</button>
     </header>
+    <nav aria-label="Sectiuni profil" className="flex max-w-full flex-nowrap gap-2 overflow-x-auto rounded-xl border border-white/10 bg-surface/60 p-2">
+      {[
+        ["personal", "Date personale și obiectiv"],
+        ["energy", "Energia și activitatea zilnică"],
+        ["weight", "Greutate și progres"],
+      ].map(([key, label]) => <button
+        key={key}
+        id={`profile-tab-${key}`}
+        type="button"
+        aria-pressed={tab === key}
+        aria-controls={`profile-panel-${key}`}
+        className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${tab === key ? "border-accent bg-accent text-ink hover:bg-[#8cf7ac]" : secondary}`}
+        onClick={() => setTab(key)}
+      >{label}</button>)}
+    </nav>
     {error && <p role="alert" className="rounded-lg border border-red-400/30 bg-red-950/40 p-3 text-red-200">{error}</p>}
     {message && <p role="status">{message}</p>}
     {!data ? <p role="status">{error ? "Profilul nu a putut fi incarcat. Reincearca actualizarea." : "Se incarca profilul..."}</p> : <>
+      <div id="profile-panel-personal" role="region" aria-labelledby="profile-tab-personal"
+        hidden={tab !== "personal"} className={tab === "personal" ? "space-y-3" : "hidden"}>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <Metric label="Greutate actuala" value={`${formatValue(latest?.weight_kg)} kg`} detail={latest?.day} />
         <Metric label="Schimbare de la prima masuratoare" value={`${formatValue(data.weight_change_kg)} kg`} detail={weights.at(-1)?.day} />
@@ -181,6 +200,7 @@ function ProfileDashboard({ user }) {
         <Metric label="Tinta activa in jurnal" value={`${formatValue(data.active_goal?.calories)} kcal/zi`}
           detail={data.active_goal ? `Din ${data.active_goal.effective_from} · ${data.active_goal.source === "profile" ? "din profil" : "manuala"}` : "Nicio tinta activa"} />
       </div>
+
 
       <div className="grid items-start gap-3 xl:grid-cols-[1.3fr_1fr]">
         <section className={panel} aria-labelledby="profile-settings-title">
@@ -196,7 +216,7 @@ function ProfileDashboard({ user }) {
                 <label>Obiectiv<select aria-label="Obiectiv" value={form.goal} onChange={(e) => change("goal", e.target.value)}>
                   {Object.entries(goalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select></label>
-                <label className="sm:col-span-2">Nivel de activitate<select required value={form.activity_level} onChange={(e) => change("activity_level", e.target.value)}>
+                <label className="sm:col-span-2">Activitate initiala (doar fallback)<select required value={form.activity_level} onChange={(e) => change("activity_level", e.target.value)}>
                   <option value="">Alege nivelul aproximativ</option>
                   {activityOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select></label>
@@ -238,11 +258,22 @@ function ProfileDashboard({ user }) {
             {recommendation.effective_goal === "lose" && <p className="text-xs text-muted">* Echivalent energetic simplificat (7.700 kcal/kg), nu o predictie a kilogramelor pierdute. Apa, compozitia corporala si adaptarea metabolica schimba evolutia reala.</p>}
             {recommendation.warnings.map((warning) => <p key={warning} className="text-sm text-amber-200">{warning}</p>)}
           </> : <p>{recommendation.reason}</p>}
-          <p className="text-xs text-muted">Estimare Mifflin–St Jeor × activitate. Se recalculeaza din ultima greutate la salvare. Pentru adulti; nevoile individuale pot diferi. Caloriile antrenamentelor nu se adauga separat peste factorul de activitate.</p>
+          <p className="text-sm text-accent">{recommendation.maintenance_source === "activity_average" ? "Baza: media activitatii inregistrate" : "Baza: estimare initiala; completeaza activitatea zilnica"}</p>
+          <p className="text-xs text-muted">Estimare Mifflin–St Jeor. Dupa minimum 4 zile complete din ultimele 7, mentinerea foloseste media activitatii declarate. Pana atunci folosim factorul initial. Nevoile individuale pot diferi.</p>
           <p className="text-xs text-muted">{data.profile?.auto_calories ? "Sincronizare automata activata." : "Tinta din jurnal ramane manuala sau fixata la ultima valoare."} {data.active_goal?.protein ? `Tinta de proteine pastrata: ${formatValue(data.active_goal.protein)} g/zi.` : "Poti configura separat tinta de proteine in jurnal."}</p>
         </section>
       </div>
 
+      <MonthSummary today={today} revision={revision} />
+      </div>
+
+      <div id="profile-panel-energy" role="region" aria-labelledby="profile-tab-energy"
+        hidden={tab !== "energy"} className={tab === "energy" ? "space-y-3" : "hidden"}>
+        <EnergyPanel today={today} revision={revision} onSaved={refresh} />
+      </div>
+
+      <div id="profile-panel-weight" role="region" aria-labelledby="profile-tab-weight"
+        hidden={tab !== "weight"} className={tab === "weight" ? "space-y-3" : "hidden"}>
       <section className={`${panel} space-y-3`} aria-labelledby="profile-weight-title">
         <h2 id="profile-weight-title" className="text-xl">Greutate si progres</h2>
         {!data.profile ? <p>Salveaza datele profilului, apoi adauga prima cantarire.</p> : <form className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={(event) => {
@@ -276,7 +307,7 @@ function ProfileDashboard({ user }) {
           {visibleWeights < weights.length && <button type="button" className={secondary} onClick={() => setVisibleWeights((count) => count + 12)}>Mai multe masuratori</button>}
         </>}
       </section>
-      <MonthSummary today={today} revision={revision} />
+      </div>
     </>}
   </main>;
 }
