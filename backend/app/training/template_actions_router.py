@@ -11,6 +11,7 @@ from app.core.security import current_user
 from app.db.session import get_db
 from app.models.tracking import Workout, WorkoutTemplate
 from app.schemas.tracking import WorkoutTemplateIn
+from app.training.energy_fields import validate_session, ENERGY_FIELDS
 
 
 router = APIRouter(tags=["training-templates"])
@@ -48,7 +49,7 @@ def update_template(
 ):
     template = personal_template(db, template_id, user)
     # Reassign the JSON column: SQLAlchemy detects the complete replacement.
-    for key, value in data.model_dump().items():
+    for key, value in validate_session(db, user["uid"], data.model_dump()).items():
         setattr(template, key, deepcopy(value))
     return save(db, template)
 
@@ -63,12 +64,13 @@ def use_template(
     template = personal_template(db, template_id, user)
     # Copy the persisted template, including duplicate exercise IDs and null values.
     # No WorkoutLog is created: the new session starts as planned.
+    values = validate_session(db, user["uid"], dict(sport=template.sport, exercises=deepcopy(template.exercises),
+        **{key: getattr(template, key) for key in ENERGY_FIELDS}))
     workout = Workout(
         user_id=user["uid"],
         day=data.day,
         title=template.name,
-        sport=template.sport,
+        **values,
         notes=template.notes,
-        exercises=deepcopy(template.exercises),
     )
     return save(db, workout)

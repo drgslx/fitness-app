@@ -10,10 +10,10 @@ const secondary = "border-white/20 bg-transparent text-copy hover:bg-raised";
 const danger = "border-red-400/30 bg-transparent text-red-200 hover:bg-red-950";
 const activityOptions = [
   ["sedentary", "Sedentar — fara antrenamente, predominant asezat"],
-  ["light", "Usor activ — aproximativ 1–3 antrenamente / saptamana"],
-  ["moderate", "Moderat — aproximativ 3–5 antrenamente / saptamana"],
-  ["high", "Foarte activ — aproximativ 6–7 antrenamente / saptamana"],
-  ["very_high", "Extrem de activ — munca fizica si antrenamente intense"],
+  ["light", "Usor activ — aproximativ 1–3 antrenamente / saptamana SAU munca usoara SAU mers pe jos pasi putini"],
+  ["moderate", "Moderat — aproximativ 3–5 antrenamente / saptamana SAU munca fizica usoara SAU mers pe jos 5.000–10.000 pasi / zi"],
+  ["high", "Foarte activ — aproximativ 6–7 antrenamente / saptamana SAU munca fizica intensa SAU mers pe jos 10.000–15.000 pasi / zi"],
+  ["very_high", "Extrem de activ — munca fizica si antrenamente intense SAU mult sport de performanta, peste 15.000 pasi / zi"],
 ];
 const goalLabels = { lose: "Slabire", maintain: "Mentinere", gain: "Crestere masa musculara" };
 const blankProfile = () => ({
@@ -239,6 +239,7 @@ function ProfileDashboard({ user }) {
             {recommendation.warnings.map((warning) => <p key={warning} className="text-sm text-amber-200">{warning}</p>)}
           </> : <p>{recommendation.reason}</p>}
           <p className="text-xs text-muted">Estimare Mifflin–St Jeor × activitate. Se recalculeaza din ultima greutate la salvare. Pentru adulti; nevoile individuale pot diferi. Caloriile antrenamentelor nu se adauga separat peste factorul de activitate.</p>
+          <h3 className="text-md font-semibold">Aceasta este doar o estimare. Un trainer poate oferi o evaluare mai precisa.</h3>
           <p className="text-xs text-muted">{data.profile?.auto_calories ? "Sincronizare automata activata." : "Tinta din jurnal ramane manuala sau fixata la ultima valoare."} {data.active_goal?.protein ? `Tinta de proteine pastrata: ${formatValue(data.active_goal.protein)} g/zi.` : "Poti configura separat tinta de proteine in jurnal."}</p>
         </section>
       </div>

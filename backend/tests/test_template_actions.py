@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.models.tracking import Workout, WorkoutTemplate, WorkoutLog
+from app.models.tracking import SportType, ExerciseDefinition, Workout, WorkoutTemplate, WorkoutLog
 from app.training import template_actions_router as routes
 
 
@@ -28,6 +28,10 @@ def client_and_db():
 
 
 def make_template(db, user_id="owner", is_active=True):
+    db.add(SportType(id=45, user_id=user_id, name="Sala"))
+    db.flush()
+    db.add(ExerciseDefinition(id=46, user_id=user_id, sport_type_id=45, name="Ramat vertical", tracking_type="strength"))
+    db.flush()
     exercises = [
         {"exercise_id": None, "name": f"Exercise {i}", "sets": 3, "reps": 8,
          "minutes": None, "weight_kg": 60.0, "notes": "control"}

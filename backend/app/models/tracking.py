@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from sqlalchemy import Date, DateTime, Float, Integer, JSON, String, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 from sqlalchemy import (
     Boolean,
@@ -25,6 +25,9 @@ class SportType(Base):
     user_id: Mapped[str] = mapped_column(String(128), index=True)
     name: Mapped[str] = mapped_column(String(100))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    activity_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    default_duration_minutes: Mapped[float | None] = mapped_column(Float, nullable=True)
+    default_intensity: Mapped[str] = mapped_column(String(20), default="moderate", server_default="moderate")
 
 
 class ExerciseDefinition(Base):
@@ -55,7 +58,38 @@ class Workout(Base):
     title: Mapped[str] = mapped_column(String(160))
     sport: Mapped[str] = mapped_column(String(80))
     notes: Mapped[str] = mapped_column(String(2000), default="")
-    exercises: Mapped[list] = mapped_column(JSON)
+    sport_type_id: Mapped[int | None] = mapped_column(ForeignKey("sport_types.id"), nullable=True)
+    activity_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    duration_minutes: Mapped[float | None] = mapped_column(Float, nullable=True)
+    intensity: Mapped[str] = mapped_column(String(20), default="moderate", server_default="moderate")
+    steps_included: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    exercise_rows: Mapped[list["WorkoutExercise"]] = relationship(
+        cascade="all, delete-orphan", order_by="WorkoutExercise.position", lazy="selectin")
+
+    @property
+    def exercises(self):
+        # API compatibility; performance belongs to a session, identity to the library.
+        return [dict(item.values, exercise_id=item.exercise_id,
+                     name=item.definition.name if item.definition else item.legacy_name) for item in self.exercise_rows]
+
+    @exercises.setter
+    def exercises(self, values):
+        self.exercise_rows = [WorkoutExercise(position=i, exercise_id=value.get("exercise_id"),
+            legacy_name=value.get("name", ""),
+            values={k: v for k, v in value.items() if k not in ("exercise_id", "name")})
+            for i, value in enumerate(values or [])]
+
+
+class WorkoutExercise(Base):
+    __tablename__ = "workout_exercises"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workout_id: Mapped[int] = mapped_column(ForeignKey("workouts.id", ondelete="CASCADE"), index=True)
+    exercise_id: Mapped[int | None] = mapped_column(ForeignKey("exercise_definitions.id"), nullable=True)
+    position: Mapped[int] = mapped_column(Integer)
+    legacy_name: Mapped[str] = mapped_column(String(160), default="")
+    values: Mapped[dict] = mapped_column(JSON)
+    definition: Mapped["ExerciseDefinition | None"] = relationship(lazy="joined")
+
 
 class WorkoutLog(Base):
     __tablename__ = "workout_logs"
@@ -76,6 +110,10 @@ class WorkoutTemplate(Base):
     notes: Mapped[str] = mapped_column(String(2000), default="")
     exercises: Mapped[list] = mapped_column(JSON)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sport_type_id: Mapped[int | None] = mapped_column(ForeignKey("sport_types.id"), nullable=True)
+    activity_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    duration_minutes: Mapped[float | None] = mapped_column(Float, nullable=True)
+    intensity: Mapped[str] = mapped_column(String(20), default="moderate", server_default="moderate")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

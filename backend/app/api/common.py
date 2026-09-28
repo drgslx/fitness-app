@@ -6,10 +6,13 @@ from sqlalchemy.orm import Session
 
 
 def row(item):
-    return {
+    result = {
         column.name: getattr(item, column.name)
         for column in item.__table__.columns
     }
+    if hasattr(item, "exercise_rows"):
+        result["exercises"] = item.exercises
+    return result
 
 
 def owned(db: Session, model, item_id: int, user: dict):
