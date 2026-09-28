@@ -1,5 +1,4 @@
-const { test, expect } = require("@playwright/test");
-
+import { test, expect } from "@playwright/test";
 const today = "2026-09-26";
 const baseProfile = {
   sex: "male", birth_date: "1996-01-01", height_cm: 176, activity_level: "moderate",

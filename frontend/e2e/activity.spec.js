@@ -1,4 +1,4 @@
-const { test, expect } = require("@playwright/test");
+import { test, expect } from "@playwright/test";
 const today = "2026-09-26";
 const types = [{ key: "strength", label: "Sala / forta", category: "strength", duration_minutes: 60 },
   { key: "muay_thai", label: "Muay Thai", category: "sport", duration_minutes: 90 }];
