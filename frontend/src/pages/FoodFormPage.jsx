@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, send } from "../api/client";
 
+import FoodSearch from "../components/FoodSearch";
+
 const blankFood = () => ({
   name: "",
   barcode: "",
@@ -68,6 +70,7 @@ export default function FoodFormPage() {
       <p>Toate valorile sunt pentru 100 g. Completeaza nutrientii pe care ii cunosti.</p>
       {error && <p role="alert" className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]">{error}</p>}
 
+      {!editing && <FoodSearch onBarcode={barcode => setFood(current => ({ ...current, barcode }))} />}
       <form onSubmit={submit}>
         <div className="grid gap-3 md:grid-cols-2">
           <label>

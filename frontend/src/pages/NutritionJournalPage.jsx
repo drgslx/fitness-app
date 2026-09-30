@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, send, localDate } from "../api/client";
 import { useAuth } from "../auth";
 import FoodSearch, { FoodAttribution } from "../components/FoodSearch";
+import FoodDetails from "../components/foods/FoodDetails";
 import NutritionProgressPanel from "../features/nutrition/NutritionProgressPanel";
 
 
@@ -19,8 +20,7 @@ export default function NutritionJournalPage() {
   const [entryId, setEntryId] = useState(null);
   const [entryType, setEntryType] = useState("food");
   const [selected, setSelected] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
+  const [details, setDetails] = useState(null);
   const [recipeUnit, setRecipeUnit] = useState("servings");
   async function loadCatalog() {
     setGoals(await api("/goals"));
@@ -87,20 +87,6 @@ export default function NutritionJournalPage() {
       }
       setEntryId(null);
       await loadDiary();
-    });
-  }
-
-  function searchJournal() {
-    if (searchTerm.trim().length < 3) { setError("Introdu minimum 3 caractere."); return; }
-    action(async () => {
-      const [foodMatches, recipeMatches] = await Promise.all([
-        api("/foods/search?q=" + encodeURIComponent(searchTerm.trim())).catch(err => { setError(err.message); return {items: []}; }),
-        api("/recipes?q=" + encodeURIComponent(searchTerm)),
-      ]);
-      setSearchResults([
-        ...foodMatches.items.map((item) => ({ ...item, type: "food" })),
-        ...recipeMatches.map((item) => ({ ...item, type: "recipe" })),
-      ]);
     });
   }
 
@@ -185,44 +171,7 @@ export default function NutritionJournalPage() {
           </div>
           <form className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl" onSubmit={submitEntry}>
             <h2>{entryId ? "Editeaza portia" : "Adauga o portie"}</h2>
-            <div className="my-4 flex flex-wrap items-end gap-3 [&_label]:min-w-[180px] [&_label]:flex-1">
-              <label>
-                Cauta aliment sau reteta
-                <input
-                  required
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="pui, orez, omleta..."
-                />
-              </label>
-              <button
-                type="button"
-                disabled={busy || searchTerm.trim().length < 3}
-                onClick={searchJournal}
-              >
-                Cauta
-              </button>
-            </div>
-            {searchResults.length > 0 && (
-              <div className="my-3 flex flex-wrap items-center gap-2">
-                {searchResults.map((item) => (
-                  <button
-                    type="button"
-                    key={`${item.type}-${item.id}`}
-                    onClick={() => selectJournalItem(item)}
-                  >
-                    {item.type === "food" ? "Aliment" : "Reteta"}: {item.name} -{" "}
-                    {item.type === "food"
-                      ? item.calories
-                      : item.calories_per_serving}{" "}
-                    kcal/{item.type === "food" ? "100 g" : "portie"}
-                    {item.type === "recipe" &&
-                      ` · ${item.calories_per_100} kcal/100 g`}
-                  </button>
-                ))}
-              </div>
-            )}
-            <Link className="text-accent" to="/nutrition/foods/new">Nu gasesti alimentul? Adauga manual</Link>
+            <FoodSearch includeRecipes onSelect={selectJournalItem} day={day} meal={entry.meal} grams={entryType === "food" ? entry.grams : 100} onAdded={loadDiary} />
             {selected && (
               <p>
                 <strong>Selectat:</strong> {selected.name} (
@@ -315,7 +264,7 @@ export default function NutritionJournalPage() {
                     <td>
                       {item.entry_type === "recipe" ? "Reteta" : "Aliment"}
                     </td>
-                    <td>{item.snapshot.name}</td>
+                    <td><button type="button" onClick={() => setDetails(item)}>{item.snapshot.name}</button></td>
                     <td>
                       {item.entry_type === "recipe" && item.servings
                         ? `${item.servings} portii`
@@ -345,7 +294,7 @@ export default function NutritionJournalPage() {
                                 }
                               : {
                                   id: item.food_id,
-                                  name: item.snapshot.name,
+                                  ...item.snapshot,
                                   type: "food",
                                 }
                           );
@@ -385,14 +334,12 @@ export default function NutritionJournalPage() {
 
       {tab === "foods" && <section className="my-4 rounded-xl border border-white/10 p-4">
         <h2>Catalog alimente</h2>
-        <FoodSearch renderActions={(food, refresh) => <>
+        <FoodSearch day={day} meal={entry.meal} onAdded={loadDiary} renderActions={food => <>
           {food.source !== "openfoodfacts" && (food.user_id === user?.uid || admin) && <Link className="text-accent" to={`/nutrition/foods/${food.id}/edit`}>Editeaza</Link>}
-          {admin && <button type="button" disabled={busy} onClick={() => {
-            if (window.confirm(`Stergi definitiv alimentul "${food.name}"?`)) action(async () => { await send(`/foods/${food.id}`, "DELETE"); await refresh(); });
-          }}>Sterge</button>}
         </>} />
       </section>}
 
+      {details && <FoodDetails food={details.snapshot} grams={details.grams} historical onClose={() => setDetails(null)} />}
       {tab === "reports" && <NutritionProgressPanel />}
     </section>
   );
