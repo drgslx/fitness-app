@@ -1,4 +1,4 @@
-const {test, expect} = require('@playwright/test');
+import {test,expect} from '@playwright/test';
 const food = {id:7,name:'Branza test',user_id:'test-user',is_public:true,calories:200,nutrients:{protein:12,carbohydrates:4,fat:15,salt:1},source:'openfoodfacts',barcode:'5941234567890',catalog_data:{nutriscore:'B',ingredients_text:null,nova_group:null}};
 async function setup(page, admin=false) {
  const state={calls:[],favorite:false,entries:[],archived:false};

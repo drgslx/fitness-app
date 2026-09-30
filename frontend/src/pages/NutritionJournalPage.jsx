@@ -6,7 +6,6 @@ import FoodSearch, { FoodAttribution } from "../components/FoodSearch";
 import FoodDetails from "../components/foods/FoodDetails";
 import NutritionProgressPanel from "../features/nutrition/NutritionProgressPanel";
 
-
 export default function NutritionJournalPage() {
   const { user, admin } = useAuth();
   const navigate = useNavigate();
@@ -55,7 +54,10 @@ export default function NutritionJournalPage() {
     0
   );
   const latestGoal = goals.find((item) => item.effective_from <= day);
-  const activeGoal = latestGoal && (!latestGoal.valid_until || latestGoal.valid_until >= day) ? latestGoal : null;
+  const activeGoal =
+    latestGoal && (!latestGoal.valid_until || latestGoal.valid_until >= day)
+      ? latestGoal
+      : null;
   const protein = entries.reduce(
     (sum, item) =>
       sum + ((item.snapshot.nutrients.protein || 0) * item.grams) / 100,
@@ -95,7 +97,10 @@ export default function NutritionJournalPage() {
     setEntryType(item.type);
     setEntryId(null);
     setRecipeUnit(item.type === "recipe" ? "servings" : "grams");
-    setEntry((current) => ({ ...current, grams: item.type === "recipe" ? 1 : 100 }));
+    setEntry((current) => ({
+      ...current,
+      grams: item.type === "recipe" ? 1 : 100,
+    }));
   }
 
   const amount = Number(entry.grams);
@@ -104,12 +109,12 @@ export default function NutritionJournalPage() {
       ? selected.type === "food"
         ? (selected.calories * amount) / 100
         : recipeUnit === "servings"
-          ? selected.calories_per_serving == null
-            ? null
-            : selected.calories_per_serving * amount
-          : selected.calories_per_100 == null
-            ? null
-            : (selected.calories_per_100 * amount) / 100
+        ? selected.calories_per_serving == null
+          ? null
+          : selected.calories_per_serving * amount
+        : selected.calories_per_100 == null
+        ? null
+        : (selected.calories_per_100 * amount) / 100
       : null;
 
   return (
@@ -126,14 +131,19 @@ export default function NutritionJournalPage() {
             type="button"
             aria-pressed={tab === key}
             key={key}
-            onClick={() => key === "goals" ? navigate("/profile") : setTab(key)}
+            onClick={() =>
+              key === "goals" ? navigate("/profile") : setTab(key)
+            }
           >
             {label}
           </button>
         ))}
       </div>
       {error && (
-        <p role="alert" className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]">
+        <p
+          role="alert"
+          className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]"
+        >
           {error}
         </p>
       )}
@@ -169,18 +179,38 @@ export default function NutritionJournalPage() {
               <p>Consum minus tinta</p>
             </section>
           </div>
-          <form className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl" onSubmit={submitEntry}>
+          <form
+            className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl"
+            onSubmit={submitEntry}
+          >
             <h2>{entryId ? "Editeaza portia" : "Adauga o portie"}</h2>
-            <FoodSearch includeRecipes onSelect={selectJournalItem} day={day} meal={entry.meal} grams={entryType === "food" ? entry.grams : 100} onAdded={loadDiary} />
+            <FoodSearch
+              includeRecipes
+              onSelect={selectJournalItem}
+              day={day}
+              meal={entry.meal}
+              grams={entryType === "food" ? entry.grams : 100}
+              onAdded={loadDiary}
+            />
             {selected && (
               <p>
                 <strong>Selectat:</strong> {selected.name} (
                 {entryType === "food" ? "aliment" : "reteta"})
-                {entryType === "recipe" && selected.basis_grams > 0 && selected.servings > 0 && (
-                  <> · 1 portie = {(selected.basis_grams / selected.servings).toFixed(1)} g</>
-                )}
+                {entryType === "recipe" &&
+                  selected.basis_grams > 0 &&
+                  selected.servings > 0 && (
+                    <>
+                      {" "}
+                      · 1 portie ={" "}
+                      {(selected.basis_grams / selected.servings).toFixed(1)} g
+                    </>
+                  )}
                 {estimatedCalories !== null && (
-                  <> · {estimatedCalories.toFixed(1)} kcal pentru cantitatea aleasa</>
+                  <>
+                    {" "}
+                    · {estimatedCalories.toFixed(1)} kcal pentru cantitatea
+                    aleasa
+                  </>
                 )}
               </p>
             )}
@@ -232,8 +262,8 @@ export default function NutritionJournalPage() {
                 {selected?.cooked_total_grams
                   ? "Gramele sunt din preparatul gatit."
                   : selected?.raw_total_grams
-                    ? "Reteta nu are gramaj gatit: calculul foloseste gramajul ingredientelor."
-                    : "Calculul foloseste gramajul definit pentru reteta."}
+                  ? "Reteta nu are gramaj gatit: calculul foloseste gramajul ingredientelor."
+                  : "Calculul foloseste gramajul definit pentru reteta."}
               </p>
             )}
             <button disabled={busy}>
@@ -264,7 +294,11 @@ export default function NutritionJournalPage() {
                     <td>
                       {item.entry_type === "recipe" ? "Reteta" : "Aliment"}
                     </td>
-                    <td><button type="button" onClick={() => setDetails(item)}>{item.snapshot.name}</button></td>
+                    <td>
+                      <button type="button" onClick={() => setDetails(item)}>
+                        {item.snapshot.name}
+                      </button>
+                    </td>
                     <td>
                       {item.entry_type === "recipe" && item.servings
                         ? `${item.servings} portii`
@@ -274,55 +308,57 @@ export default function NutritionJournalPage() {
                       {((item.snapshot.calories * item.grams) / 100).toFixed(1)}
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEntryId(item.id);
-                          setEntryType(item.entry_type);
-                          setRecipeUnit(item.quantity_unit || "grams");
-                          setSelected(
-                            item.entry_type === "recipe"
-                              ? {
-                                  id: item.recipe_id,
-                                  name: item.snapshot.name,
-                                  type: "recipe",
-                                  calories_per_100: item.snapshot.calories,
-                                  calories_per_serving: item.servings
-                                    ? (item.snapshot.calories * item.grams) /
-                                      (100 * item.servings)
-                                    : null,
-                                }
-                              : {
-                                  id: item.food_id,
-                                  ...item.snapshot,
-                                  type: "food",
-                                }
-                          );
-                          setEntry({
-                            grams: item.servings ?? item.grams,
-                            meal: item.meal,
-                          });
-                        }}
-                      >
-                        Editeaza
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() =>
-                          action(async () => {
-                            await send(
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEntryId(item.id);
+                            setEntryType(item.entry_type);
+                            setRecipeUnit(item.quantity_unit || "grams");
+                            setSelected(
                               item.entry_type === "recipe"
-                                ? `/recipe-diary/${item.id}`
-                                : `/diary/${item.id}`,
-                              "DELETE"
+                                ? {
+                                    id: item.recipe_id,
+                                    name: item.snapshot.name,
+                                    type: "recipe",
+                                    calories_per_100: item.snapshot.calories,
+                                    calories_per_serving: item.servings
+                                      ? (item.snapshot.calories * item.grams) /
+                                        (100 * item.servings)
+                                      : null,
+                                  }
+                                : {
+                                    id: item.food_id,
+                                    ...item.snapshot,
+                                    type: "food",
+                                  }
                             );
-                            await loadDiary();
-                          })
-                        }
-                      >
-                        Sterge
-                      </button>
+                            setEntry({
+                              grams: item.servings ?? item.grams,
+                              meal: item.meal,
+                            });
+                          }}
+                        >
+                          Editeaza
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            action(async () => {
+                              await send(
+                                item.entry_type === "recipe"
+                                  ? `/recipe-diary/${item.id}`
+                                  : `/diary/${item.id}`,
+                                "DELETE"
+                              );
+                              await loadDiary();
+                            })
+                          }
+                        >
+                          Sterge
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -332,14 +368,38 @@ export default function NutritionJournalPage() {
         </>
       )}
 
-      {tab === "foods" && <section className="my-4 rounded-xl border border-white/10 p-4">
-        <h2>Catalog alimente</h2>
-        <FoodSearch day={day} meal={entry.meal} onAdded={loadDiary} renderActions={food => <>
-          {food.source !== "openfoodfacts" && (food.user_id === user?.uid || admin) && <Link className="text-accent" to={`/nutrition/foods/${food.id}/edit`}>Editeaza</Link>}
-        </>} />
-      </section>}
+      {tab === "foods" && (
+        <section className="my-4 rounded-xl border border-white/10 p-4">
+          <h2>Catalog alimente</h2>
+          <FoodSearch
+            day={day}
+            meal={entry.meal}
+            onAdded={loadDiary}
+            renderActions={(food) => (
+              <>
+                {food.source !== "openfoodfacts" &&
+                  (food.user_id === user?.uid || admin) && (
+                    <Link
+                      className="text-accent"
+                      to={`/nutrition/foods/${food.id}/edit`}
+                    >
+                      Editeaza
+                    </Link>
+                  )}
+              </>
+            )}
+          />
+        </section>
+      )}
 
-      {details && <FoodDetails food={details.snapshot} grams={details.grams} historical onClose={() => setDetails(null)} />}
+      {details && (
+        <FoodDetails
+          food={details.snapshot}
+          grams={details.grams}
+          historical
+          onClose={() => setDetails(null)}
+        />
+      )}
       {tab === "reports" && <NutritionProgressPanel />}
     </section>
   );
