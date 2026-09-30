@@ -134,6 +134,7 @@ class FoodSearchCache(Base):
 
 class Food(Base):
     __tablename__ = "foods"
+    archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     barcode: Mapped[str | None] = mapped_column(String(14), index=True)
     off_code: Mapped[str | None] = mapped_column(String(14), unique=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
@@ -176,3 +177,16 @@ class NutritionGoal(Base):
     source: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
     calculation: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class FoodFavorite(Base):
+    __tablename__ = "food_favorites"
+    user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    food_id: Mapped[int] = mapped_column(ForeignKey("foods.id"), primary_key=True)
+
+
+class FoodExclusion(Base):
+    __tablename__ = "food_exclusions"
+    barcode: Mapped[str] = mapped_column(String(14), primary_key=True)
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

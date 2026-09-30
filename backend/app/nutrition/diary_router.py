@@ -26,6 +26,10 @@ def entry_values(data: EntryIn, db: Session, user):
             "name": food.name,
             "calories": food.calories,
             "nutrients": food.nutrients,
+            "barcode": food.barcode,
+            "source": food.source,
+            "is_public": food.is_public,
+            "catalog_data": food.catalog_data,
         },
     }
 

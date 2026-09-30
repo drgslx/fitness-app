@@ -8,7 +8,8 @@ import httpx
 from fastapi import HTTPException
 from sqlalchemy import select, or_, update
 from sqlalchemy.exc import IntegrityError
-from app.models.tracking import Food, FoodSearchCache
+from sqlalchemy.orm import object_session
+from app.models.tracking import Food, FoodSearchCache, FoodExclusion
 from app.core.config import settings
 
 FIELDS = "code,product_name,product_name_ro,brands,categories,categories_tags,countries_tags,nutriments,nutrition_data_per,product_quantity_unit,serving_size,quantity,nutriscore_grade,nutrition_grades,nova_group,ingredients_text,allergens_tags,last_modified_t"
@@ -16,14 +17,26 @@ FIELDS = "code,product_name,product_name_ro,brands,categories,categories_tags,co
 def normalize(text):
     return " ".join("".join(c for c in unicodedata.normalize("NFKD", text.lower()) if not unicodedata.combining(c)).split())
 
+def active_food_clause():
+    # Also excludes an import that raced an admin transaction before seeing the block.
+    excluded = select(FoodExclusion.barcode).where(or_(
+        FoodExclusion.barcode == Food.barcode, FoodExclusion.barcode == Food.off_code)).exists()
+    return Food.archived.is_(False) & (~Food.is_public | ~excluded)
+
+
 def visible(food, user):
-    return food is not None and (food.is_public or food.user_id == user["uid"] or user.get("admin") is True)
+    if food is None or food.archived or not (food.is_public or food.user_id == user["uid"]):
+        return False
+    db = object_session(food)
+    if food.is_public and db and any(db.get(FoodExclusion, code) for code in {food.barcode, food.off_code} if code):
+        return False
+    return True
 
 def local_search(db, user, q, offset=0, limit=20):
     q = normalize(q)
     if len(q) < 3: return []
     clause = Food.barcode == q if q.isdigit() else Food.search_text.contains(q, autoescape=True)
-    return list(db.scalars(select(Food).where(or_(Food.is_public.is_(True), Food.user_id == user["uid"]), clause).order_by(Food.name, Food.id).offset(offset).limit(limit)))
+    return list(db.scalars(select(Food).where(active_food_clause(), or_(Food.is_public.is_(True), Food.user_id == user["uid"]), clause).order_by(Food.name, Food.id).offset(offset).limit(limit)))
 
 def product_values(product):
     if not isinstance(product, dict): return None
@@ -53,9 +66,10 @@ def product_values(product):
 
 def import_product(db, product, refresh=False):
     values = product_values(product)
-    if values is None: return None
+    if values is None or db.get(FoodExclusion, values["off_code"]) is not None: return None
     existing = db.scalar(select(Food).where(Food.off_code == values["off_code"]))
     if existing:
+        if existing.archived: return None
         if refresh:
             for key, value in values.items(): setattr(existing, key, value)
         return existing
@@ -65,7 +79,7 @@ def import_product(db, product, refresh=False):
             db.add(food); db.flush()
         return food
     except IntegrityError:
-        return db.scalar(select(Food).where(Food.off_code == values["off_code"]))
+        return db.scalar(select(Food).where(Food.off_code == values["off_code"], Food.archived.is_(False)))
 
 def remote_products(q):
     if not settings.off_user_agent: raise HTTPException(503, "Cautarea externa nu este configurata. Poti adauga alimentul manual.")
@@ -76,11 +90,15 @@ def remote_products(q):
             response.raise_for_status()
             data = response.json()
             product = data.get("product")
-            # Barcodes are global IDs, so keep the app catalog Romania-focused too.
-            # OFF only proves local availability when the product carries this country tag.
+            country = settings.off_country_tag.strip()
+            if not country: return [product] if isinstance(product, dict) else []
             countries = product.get("countries_tags", []) if isinstance(product, dict) else []
-            return [product] if isinstance(countries, list) and "en:romania" in countries else []
-        response = client.get("https://world.openfoodfacts.org/cgi/search.pl", params={"search_terms":q, "search_simple":1, "action":"process", "json":1, "page_size":20, "tagtype_0":"countries", "tag_contains_0":"contains", "tag_0":"romania", "fields":FIELDS})
+            return [product] if isinstance(countries, list) and country in countries else []
+        params = {"search_terms":q, "search_simple":1, "action":"process", "json":1, "page_size":20, "fields":FIELDS}
+        country = settings.off_country_tag.strip()
+        if country:
+            params.update(tagtype_0="countries", tag_contains_0="contains", tag_0=country.removeprefix("en:"))
+        response = client.get("https://world.openfoodfacts.org/cgi/search.pl", params=params)
         response.raise_for_status()
         return response.json().get("products", [])
 
@@ -88,15 +106,17 @@ def search(db, user, q, page=1):
     q = normalize(q)
     if q.isdigit() and not re.fullmatch(r"[0-9]{8,14}", q):
         raise HTTPException(422, "Codul de bare trebuie sa aiba 8–14 cifre.")
+    if q.isdigit() and db.get(FoodExclusion, q):
+        return [], False, "local", "Acest produs a fost exclus din catalog de administrator."
     found = local_search(db, user, q, (page-1)*20, 21)
     if found or page > 1 or len(q) < 3:
         return found[:20], len(found)>20, "local", ""
-    key = hashlib.sha256(("ro:" + q).encode()).hexdigest()
+    key = hashlib.sha256(((settings.off_country_tag.strip() or "global") + ":" + q).encode()).hexdigest()
     now = time.time()
     cache = db.get(FoodSearchCache, key)
     if cache and cache.expires > now:
         ids = cache.payload.get("ids", [])
-        return list(db.scalars(select(Food).where(Food.id.in_(ids), Food.is_public.is_(True)))), False, "cache", cache.payload.get("message", "")
+        return list(db.scalars(select(Food).where(Food.id.in_(ids), Food.is_public.is_(True), active_food_clause()))), False, "cache", cache.payload.get("message", "")
     # One shared gate across workers; seven seconds stays below both OFF limits.
     if db.get(FoodSearchCache, "rate") is None:
         try:
@@ -114,4 +134,5 @@ def search(db, user, q, page=1):
     message = "" if items else "Niciun produs utilizabil per 100 g. Adauga manual; valorile lipsa nu sunt inlocuite cu zero."
     db.merge(FoodSearchCache(key=key, expires=now+(86400 if items else 21600), payload={"ids":[f.id for f in items], "message":message}))
     db.commit()
+    items = [food for food in items if visible(food, user)]
     return items, False, "openfoodfacts", message
