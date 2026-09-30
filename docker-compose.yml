@@ -17,6 +17,7 @@ services:
     command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sport}:${POSTGRES_PASSWORD:-sport-local-password}@postgres:5432/${POSTGRES_DB:-sportdb}
+      OFF_USER_AGENT: ${OFF_USER_AGENT:-}
       UPLOAD_DIR: /data/uploads
       FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
     volumes:

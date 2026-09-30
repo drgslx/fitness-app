@@ -10,14 +10,15 @@ from app.db.session import get_db
 from app.models.recipe import RecipeDiaryEntry
 from app.models.tracking import DiaryEntry, Food
 from app.schemas.tracking import EntryIn
+from app.services.food_catalog import visible
 
 
 router = APIRouter(tags=["nutrition-diary"])
 
 
-def entry_values(data: EntryIn, db: Session):
+def entry_values(data: EntryIn, db: Session, user):
     food = db.get(Food, data.food_id)
-    if food is None:
+    if not visible(food, user):
         raise HTTPException(status_code=404, detail="Food not found")
     return {
         **data.model_dump(),
@@ -25,6 +26,10 @@ def entry_values(data: EntryIn, db: Session):
             "name": food.name,
             "calories": food.calories,
             "nutrients": food.nutrients,
+            "barcode": food.barcode,
+            "source": food.source,
+            "is_public": food.is_public,
+            "catalog_data": food.catalog_data,
         },
     }
 
@@ -73,7 +78,7 @@ def add_entry(
         db,
         DiaryEntry(
             user_id=user["uid"],
-            **entry_values(data, db),
+            **entry_values(data, db, user),
         ),
     )
 
@@ -88,7 +93,7 @@ def edit_entry(
     entry = owned(db, DiaryEntry, item_id, user)
     values = data.model_dump()
     if entry.food_id != data.food_id:
-        values = entry_values(data, db)
+        values = entry_values(data, db, user)
     for key, value in values.items():
         setattr(entry, key, value)
     return save(db, entry)

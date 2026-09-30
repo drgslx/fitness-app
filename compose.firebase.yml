@@ -3,7 +3,4 @@ services:
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-admin.json
     volumes:
-      - type: bind
-        source: ./secrets/firebase-admin.json
-        target: /run/secrets/firebase-admin.json
-        read_only: true
+      - ./secrets/firebase-admin.json:/run/secrets/firebase-admin.json:ro

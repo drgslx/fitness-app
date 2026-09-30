@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import FoodSearch from "../components/FoodSearch";
 import { api, send } from "../api/client";
 
 const blankRecipe = () => ({
@@ -11,9 +12,7 @@ const blankRecipe = () => ({
 
 export default function RecipesPage() {
   const [recipes, setRecipes] = useState([]);
-  const [foods, setFoods] = useState([]);
   const [search, setSearch] = useState("");
-  const [foodSearch, setFoodSearch] = useState("");
   const [recipe, setRecipe] = useState(blankRecipe);
   const [editingId, setEditingId] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -37,12 +36,6 @@ export default function RecipesPage() {
     } finally {
       setBusy(false);
     }
-  }
-
-  function searchFoods() {
-    action(async () =>
-      setFoods(await api("/foods?q=" + encodeURIComponent(foodSearch)))
-    );
   }
 
   function addIngredient(food) {
@@ -91,7 +84,6 @@ export default function RecipesPage() {
       );
       setRecipe(blankRecipe());
       setEditingId(null);
-      setFoods([]);
       await loadRecipes();
     });
   }
@@ -189,36 +181,7 @@ export default function RecipesPage() {
           />
         </label>
 
-        <div className="my-4 flex flex-wrap items-end gap-3 [&_label]:min-w-[180px] [&_label]:flex-1">
-          <label>
-            Cauta ingredient
-            <input
-              value={foodSearch}
-              onChange={(event) => setFoodSearch(event.target.value)}
-              placeholder="pui, orez, rosie..."
-            />
-          </label>
-          <button
-            type="button"
-            disabled={!foodSearch.trim() || busy}
-            onClick={searchFoods}
-          >
-            Cauta aliment
-          </button>
-        </div>
-        {foods.length > 0 && (
-          <div className="my-3 flex flex-wrap items-center gap-2">
-            {foods.map((food) => (
-              <button
-                type="button"
-                key={food.id}
-                onClick={() => addIngredient(food)}
-              >
-                + {food.name} ({food.calories} kcal/100 g)
-              </button>
-            ))}
-          </div>
-        )}
+        <FoodSearch onSelect={addIngredient} />
 
         {recipe.ingredients.length > 0 && (
           <div className="my-4 w-full overflow-x-auto">
