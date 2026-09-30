@@ -82,6 +82,8 @@ class NutrientIn(Input):
     label: str = Field(min_length=1, max_length=100)
     unit: str = Field(pattern=r"^(g|mg|mcg)$")
 class FoodIn(Input):
+    barcode: str | None = Field(default=None, pattern=r"^[0-9]{8,14}$")
+    is_public: bool = False
     name: str = Field(min_length=1, max_length=180)
     calories: NonNegative
     nutrients: dict[Key, NonNegative] = Field(default_factory=dict)

@@ -7,6 +7,7 @@ from app.db.session import get_db
 from app.models.recipe import Recipe, RecipeIngredient, RecipeDiaryEntry
 from app.models.tracking import Food
 from app.schemas.recipe import RecipeIn, RecipeDiaryIn
+from app.services.food_catalog import visible
 
 router = APIRouter(tags=["recipes"])
 
@@ -48,11 +49,15 @@ def recipe_out(recipe, db):
     return {**row(recipe), "ingredients": [row(item) for item in ingredients], **summary(recipe, ingredients)}
 
 
-def ingredient_rows(data, db):
+def ingredient_rows(data, db, user, existing=None):
     rows = []
     for item in data.ingredients:
         food = db.get(Food, item.food_id)
-        if food is None:
+        if not visible(food, user) and existing and item.food_id in existing:
+            old = existing[item.food_id]
+            rows.append(RecipeIngredient(food_id=old.food_id, name=old.name, grams=item.grams, snapshot=old.snapshot))
+            continue
+        if not visible(food, user):
             raise HTTPException(422, f"Food {item.food_id} does not exist")
         rows.append(RecipeIngredient(food_id=food.id, name=food.name, grams=item.grams, snapshot={"calories": food.calories, "nutrients": food.nutrients}))
     return rows
@@ -76,7 +81,7 @@ def add_recipe(data: RecipeIn, user=Depends(current_user), db: Session = Depends
     recipe = Recipe(user_id=user["uid"], name=data.name, servings=data.servings, cooked_total_grams=data.cooked_total_grams, notes=data.notes)
     db.add(recipe)
     db.flush()
-    for ingredient in ingredient_rows(data, db):
+    for ingredient in ingredient_rows(data, db, user):
         ingredient.recipe_id = recipe.id
         db.add(ingredient)
     db.commit()
@@ -91,8 +96,9 @@ def edit_recipe(recipe_id: int, data: RecipeIn, user=Depends(current_user), db: 
     recipe.servings = data.servings
     recipe.cooked_total_grams = data.cooked_total_grams
     recipe.notes = data.notes
+    existing = {i.food_id: i for i in db.scalars(select(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe.id))}
     db.query(RecipeIngredient).filter(RecipeIngredient.recipe_id == recipe.id).delete()
-    for ingredient in ingredient_rows(data, db):
+    for ingredient in ingredient_rows(data, db, user, existing):
         ingredient.recipe_id = recipe.id
         db.add(ingredient)
     db.commit()

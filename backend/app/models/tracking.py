@@ -125,8 +125,21 @@ class Nutrient(Base):
     label: Mapped[str] = mapped_column(String(100))
     unit: Mapped[str] = mapped_column(String(15))
 
+class FoodSearchCache(Base):
+    __tablename__ = "food_search_cache"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    expires: Mapped[float] = mapped_column(Float)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
 class Food(Base):
     __tablename__ = "foods"
+    barcode: Mapped[str | None] = mapped_column(String(14), index=True)
+    off_code: Mapped[str | None] = mapped_column(String(14), unique=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    source: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
+    catalog_data: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
+    search_text: Mapped[str] = mapped_column(String(1000), default="", server_default="")
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[str] = mapped_column(String(128), index=True)
     name: Mapped[str] = mapped_column(String(180), index=True)

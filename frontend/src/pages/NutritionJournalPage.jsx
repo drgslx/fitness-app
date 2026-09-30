@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, send, localDate } from "../api/client";
 import { useAuth } from "../auth";
+import FoodSearch, { FoodAttribution } from "../components/FoodSearch";
 import NutritionProgressPanel from "../features/nutrition/NutritionProgressPanel";
 
 
@@ -10,12 +11,8 @@ export default function NutritionJournalPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("diary");
   const [day, setDay] = useState(localDate());
-  const [foods, setFoods] = useState([]);
-  const [nutrients, setNutrients] = useState([]);
-  const [types, setTypes] = useState([]);
   const [goals, setGoals] = useState([]);
   const [entries, setEntries] = useState([]);
-  const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [entry, setEntry] = useState({ grams: 100, meal: "Mic dejun" });
@@ -25,31 +22,8 @@ export default function NutritionJournalPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [recipeUnit, setRecipeUnit] = useState("servings");
-  const [goal, setGoal] = useState({
-    effective_from: localDate(),
-    goal_type: "maintain",
-    calories: 2000,
-    protein: 100,
-    pace_kg_week: null,
-    notes: "",
-  });
-  const [start, setStart] = useState(
-    localDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
-  );
-  const [end, setEnd] = useState(localDate());
-  const [report, setReport] = useState(null);
-
-  async function loadCatalog(search = query) {
-    const [foodList, nutrientList, goalTypes, goalList] = await Promise.all([
-      api("/foods?q=" + encodeURIComponent(search)),
-      api("/nutrients"),
-      api("/goal-types"),
-      api("/goals"),
-    ]);
-    setFoods(foodList);
-    setNutrients(nutrientList);
-    setTypes(goalTypes);
-    setGoals(goalList);
+  async function loadCatalog() {
+    setGoals(await api("/goals"));
   }
 
   async function loadDiary() {
@@ -117,13 +91,14 @@ export default function NutritionJournalPage() {
   }
 
   function searchJournal() {
+    if (searchTerm.trim().length < 3) { setError("Introdu minimum 3 caractere."); return; }
     action(async () => {
       const [foodMatches, recipeMatches] = await Promise.all([
-        api("/foods?q=" + encodeURIComponent(searchTerm)),
+        api("/foods/search?q=" + encodeURIComponent(searchTerm.trim())).catch(err => { setError(err.message); return {items: []}; }),
         api("/recipes?q=" + encodeURIComponent(searchTerm)),
       ]);
       setSearchResults([
-        ...foodMatches.map((item) => ({ ...item, type: "food" })),
+        ...foodMatches.items.map((item) => ({ ...item, type: "food" })),
         ...recipeMatches.map((item) => ({ ...item, type: "recipe" })),
       ]);
     });
@@ -151,14 +126,6 @@ export default function NutritionJournalPage() {
             : (selected.calories_per_100 * amount) / 100
       : null;
 
-  function deleteFood(food) {
-    if (!window.confirm(`Stergi definitiv alimentul "${food.name}"?`)) return;
-    action(async () => {
-      await send(`/foods/${food.id}`, "DELETE");
-      await loadCatalog();
-    });
-  }
-
   return (
     <section>
       <p>Produse per 100 g, portii in grame si obiective cu istoric.</p>
@@ -173,7 +140,7 @@ export default function NutritionJournalPage() {
             type="button"
             aria-pressed={tab === key}
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => key === "goals" ? navigate("/profile") : setTab(key)}
           >
             {label}
           </button>
@@ -185,6 +152,7 @@ export default function NutritionJournalPage() {
         </p>
       )}
 
+      <FoodAttribution />
       {tab === "diary" && (
         <>
           <label>
@@ -229,7 +197,7 @@ export default function NutritionJournalPage() {
               </label>
               <button
                 type="button"
-                disabled={busy || !searchTerm.trim()}
+                disabled={busy || searchTerm.trim().length < 3}
                 onClick={searchJournal}
               >
                 Cauta
@@ -254,6 +222,7 @@ export default function NutritionJournalPage() {
                 ))}
               </div>
             )}
+            <Link className="text-accent" to="/nutrition/foods/new">Nu gasesti alimentul? Adauga manual</Link>
             {selected && (
               <p>
                 <strong>Selectat:</strong> {selected.name} (
@@ -327,7 +296,6 @@ export default function NutritionJournalPage() {
               </button>
             )}
           </form>
-          {!foods.length && <p>Adauga mai intai un produs in catalog.</p>}
           <div className="my-4 w-full overflow-x-auto">
             <table>
               <thead>
@@ -415,208 +383,15 @@ export default function NutritionJournalPage() {
         </>
       )}
 
-      {tab === "foods" && (
-        <>
-          <form
-            className="my-4 flex flex-wrap items-end gap-3 [&_label]:min-w-[180px] [&_label]:flex-1"
-            onSubmit={(event) => {
-              event.preventDefault();
-              action(() => loadCatalog());
-            }}
-          >
-            <label>
-              Cauta in catalog
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </label>
-            <button disabled={busy}>Cauta</button>
-          </form>
-          <p>
-            Catalogul este comun tuturor utilizatorilor. Rezultatele sunt
-            limitate la 200.
-          </p>
-          <div className="my-4 w-full overflow-x-auto">
-            <table>
-              <thead>
-                <tr>
-                  <th>Produs</th>
-                  <th>kcal</th>
-                  <th>Proteine</th>
-                  <th>Grasimi</th>
-                  <th>Fibre</th>
-                  <th>Carbohidrati</th>
-                  <th>Sare</th>
-                  <th>Zaharuri</th>
-                  <th>Actiuni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {foods.map((food) => (
-                  <tr key={food.id}>
-                    <td>{food.name}</td>
-                    <td>{food.calories}</td>
-                    <td>{food.nutrients.protein ?? "-"}</td>
-                    <td>{food.nutrients.fat ?? "-"}</td>
-                    <td>{food.nutrients.fiber ?? "-"}</td>
-                    <td>{food.nutrients.carbohydrates ?? "-"}</td>
-                    <td>{food.nutrients.salt ?? "-"}</td>
-                    <td>{food.nutrients.sugar ?? "-"}</td>
-                    <td>
-                      {(admin || food.user_id === user.uid) && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              navigate(`/nutrition/foods/${food.id}/edit`)
-                            }
-                          >
-                            Editeaza
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => deleteFood(food)}
-                          >
-                            Sterge
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {tab === "goals" && (
-        <>
-          <form
-            className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl"
-            onSubmit={(event) => {
-              event.preventDefault();
-              action(async () => {
-                await send("/goals", "PUT", goal);
-                await loadCatalog();
-              });
-            }}
-          >
-            <h2>Seteaza obiectivul</h2>
-            <p className="text-sm text-muted">Salvarea manuala opreste sincronizarea calorica din profil. Pentru calcul din greutate, inaltime si activitate, deschide <Link to="/profile">Profilul meu</Link>.</p>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label>
-                Incepand cu
-                <input
-                  required
-                  type="date"
-                  value={goal.effective_from}
-                  onChange={(event) =>
-                    setGoal({ ...goal, effective_from: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Tip
-                <select
-                  value={goal.goal_type}
-                  onChange={(event) =>
-                    setGoal({ ...goal, goal_type: event.target.value })
-                  }
-                >
-                  {types.map((type) => (
-                    <option key={type.key} value={type.key}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                kcal/zi
-                <input
-                  required
-                  type="number"
-                  min="1"
-                  value={goal.calories}
-                  onChange={(event) =>
-                    setGoal({ ...goal, calories: Number(event.target.value) })
-                  }
-                />
-              </label>
-              <label>
-                Proteine g/zi
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  value={goal.protein}
-                  onChange={(event) =>
-                    setGoal({ ...goal, protein: Number(event.target.value) })
-                  }
-                />
-              </label>
-              <label>
-                Ritm kg/saptamana
-                <input
-                  type="number"
-                  min="-10"
-                  max="10"
-                  step=".1"
-                  value={goal.pace_kg_week ?? ""}
-                  onChange={(event) =>
-                    setGoal({
-                      ...goal,
-                      pace_kg_week:
-                        event.target.value === ""
-                          ? null
-                          : Number(event.target.value),
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <label>
-              Note
-              <textarea
-                maxLength={1000}
-                value={goal.notes}
-                onChange={(event) =>
-                  setGoal({ ...goal, notes: event.target.value })
-                }
-              />
-            </label>
-            <button disabled={busy}>Salveaza obiectivul</button>
-          </form>
-          <h2>Istoric obiective</h2>
-          {goals.map((item) => (
-            <p key={item.id}>
-              {item.effective_from} -{" "}
-              {types.find((type) => type.key === item.goal_type)?.label ||
-                item.goal_type}{" "}
-              - {item.calories} kcal - {item.protein} g proteine{" "}
-              {item.source === "profile" && <span className="text-muted">(din profil)</span>}
-              {item.valid_until && <span className="text-amber-200"> Suspendat dupa {item.valid_until} </span>}
-              <button
-                type="button"
-                onClick={() =>
-                  setGoal({
-                    effective_from: item.effective_from,
-                    goal_type: item.goal_type,
-                    calories: item.calories,
-                    protein: item.protein,
-                    pace_kg_week: item.pace_kg_week,
-                    notes: item.notes,
-                  })
-                }
-              >
-                Editeaza
-              </button>
-            </p>
-          ))}
-        </>
-      )}
+      {tab === "foods" && <section className="my-4 rounded-xl border border-white/10 p-4">
+        <h2>Catalog alimente</h2>
+        <FoodSearch renderActions={(food, refresh) => <>
+          {food.source !== "openfoodfacts" && (food.user_id === user?.uid || admin) && <Link className="text-accent" to={`/nutrition/foods/${food.id}/edit`}>Editeaza</Link>}
+          {admin && <button type="button" disabled={busy} onClick={() => {
+            if (window.confirm(`Stergi definitiv alimentul "${food.name}"?`)) action(async () => { await send(`/foods/${food.id}`, "DELETE"); await refresh(); });
+          }}>Sterge</button>}
+        </>} />
+      </section>}
 
       {tab === "reports" && <NutritionProgressPanel />}
     </section>
