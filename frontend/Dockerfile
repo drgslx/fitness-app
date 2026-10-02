@@ -2,8 +2,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --package-lock-only --ignore-scripts --no-audit --no-fund \
-    && npm ci --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 
 COPY . .
 ARG VITE_API_URL=/api/v1

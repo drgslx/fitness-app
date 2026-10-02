@@ -2,162 +2,103 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth, useAuth } from "../auth";
-
-function navItemClass({ isActive }) {
-  return `inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm font-medium text-[#d7dfd9] no-underline transition-colors hover:border-accent/30 hover:bg-[#203629] hover:text-white focus-visible:outline-2 focus-visible:outline-accent ${isActive ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink" : ""}`;
-}
-
-function FeatureMenu({ label, pathPrefix, items }) {
-  const location = useLocation();
-  const containerRef = useRef(null);
-  const [open, setOpen] = useState(false);
-  const selected = location.pathname.startsWith(pathPrefix);
-
-  useEffect(() => setOpen(false), [location.pathname]);
-
-  useEffect(() => {
-    function closeOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target))
-        setOpen(false);
-    }
-    function closeWithEscape(event) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", closeOutside);
-    document.addEventListener("keydown", closeWithEscape);
-    return () => {
-      document.removeEventListener("mousedown", closeOutside);
-      document.removeEventListener("keydown", closeWithEscape);
-    };
-  }, []);
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <button
-        type="button"
-        className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm font-medium text-[#d7dfd9] no-underline transition-colors hover:border-accent/30 hover:bg-[#203629] hover:text-white focus-visible:outline-2 focus-visible:outline-accent ${selected ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink" : ""}`}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen((current) => !current)}
-      >
-        {label}
-        <span className={`text-xs transition-transform ${open ? "rotate-180" : ""}`}>v</span>
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-[calc(100%+8px)] z-[1000] flex w-[min(300px,calc(100vw-32px))] flex-col gap-1 rounded-xl border border-white/15 bg-[#14221a] p-2 shadow-2xl [&_a]:flex [&_a]:w-full [&_a]:flex-col [&_a]:items-start [&_a]:text-left [&_small]:text-xs [&_small]:text-muted" role="menu">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={navItemClass}
-              role="menuitem"
-            >
-              <strong>{item.title}</strong>
-              <small>{item.description}</small>
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import FeatureMenu, { navLinkClass } from "./navigation/FeatureMenu";
+import { trainingItems, nutritionItems } from "./navigation/items";
 
 export default function Navbar() {
   const { user, admin } = useAuth();
-
+  const { pathname } = useLocation();
+  const [open, setOpen] = useState(false);
+  const trigger = useRef(null);
+  const nav = useRef(null);
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    const close = (event) => {
+      if (!nav.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, []);
   return (
-    <nav className="sticky top-0 z-50 flex min-h-[64px] flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#09100cee] px-4 py-2 backdrop-blur-lg md:px-[5vw]">
-      <Link className="font-bold tracking-[.12em] text-accent no-underline" to="/">
-        ATHLETICA
-      </Link>
-
-      <div className="flex flex-wrap items-center gap-1">
-        <NavLink to="/articles" className={navItemClass}>
-          Articole
-        </NavLink>
-
-        <FeatureMenu
-          label="Antrenamente"
-          pathPrefix="/workouts"
-          items={[
-            {
-              to: "/workouts/sessions",
-              title: "Sesiuni",
-              description: "Planuri si istoric",
-            },
-            {
-              to: "/workouts/catalog",
-              title: "Catalog sporturi",
-              description: "Sporturi si exercitii aferente",
-            },
-            {
-              to: "/workouts/reports",
-              title: "Rapoarte",
-              description: "Progresul exercitiilor pe saptamana sau luna",
-            },
-            {
-              to: "/workouts/sports/new",
-              title: "Adauga sport",
-              description: "Creeaza un nou sport in catalog",
-            },
-            {
-              to: "/workouts/sessions/new",
-              title: "Adauga sesiune",
-              description: "Creeaza o noua sesiune in catalog",
-            },
-          ]}
-        />
-
-        <FeatureMenu
-          label="Alimentatie"
-          pathPrefix="/nutrition"
-          items={[
-            {
-              to: "/nutrition/journal",
-              title: "Jurnal nutritional",
-              description: "Jurnal, catalog, obiective si rapoarte",
-            },
-            {
-              to: "/nutrition/recipes",
-              title: "Retete",
-              description: "Ingrediente, portii si gramaj gatit",
-            },
-            {
-              to: "/nutrition/foods/new",
-              title: "Adauga aliment",
-              description: "Creeaza un aliment in catalog",
-            },
-            {
-              to: "/nutrition/reports",
-              title: "Rapoarte nutritionale",
-              description: "Calorii, nutrienti si comparatii intre perioade",
-            },
-          ]}
-        />
-
-        {admin && (
-          <NavLink to="/admin" className={navItemClass}>
-            Admin
-          </NavLink>
-        )}
-
-        {user && <NavLink to="/profile" className={navItemClass}>Profil</NavLink>}
-
-        {user ? (
-          <button
-            type="button"
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm font-medium text-[#d7dfd9] no-underline transition-colors hover:border-accent/30 hover:bg-[#203629] hover:text-white focus-visible:outline-2 focus-visible:outline-accent"
-            onClick={() => signOut(auth)}
+    <>
+      <a
+        href="#page-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-lg focus:bg-ink focus:p-3"
+      >
+        Sari la continut
+      </a>
+      <nav
+        ref={nav}
+        aria-label="Navigare principala"
+        className="sticky top-0 z-50 border-b border-white/10 bg-ink/95 backdrop-blur-lg"
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && open) {
+            setOpen(false);
+            trigger.current?.focus();
+          }
+        }}
+      >
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-2 px-4 py-2 sm:px-6 lg:px-8">
+          <Link
+            className="py-2 font-display text-lg font-bold tracking-widest text-accent no-underline"
+            to="/"
           >
-            Deconectare
+            ATHLETICA
+          </Link>
+          <button
+            ref={trigger}
+            type="button"
+            className="btn btn-secondary lg:hidden"
+            aria-expanded={open}
+            aria-controls="main-navigation"
+            onClick={() => setOpen((value) => !value)}
+          >
+            <span aria-hidden="true">{open ? "✕" : "☰"}</span>
+            {open ? "Inchide meniul" : "Meniu"}
           </button>
-        ) : (
-          <NavLink to="/login" className={navItemClass}>
-            Autentificare
-          </NavLink>
-        )}
-      </div>
-    </nav>
+          <div
+            id="main-navigation"
+            className={`${open ? "flex" : "hidden"} max-h-[calc(100dvh-76px)] w-full flex-col gap-1 overflow-y-auto pb-2 lg:flex lg:w-auto lg:flex-row lg:items-center lg:overflow-visible lg:pb-0`}
+          >
+            <NavLink to="/articles" className={navLinkClass}>
+              Articole
+            </NavLink>
+            <FeatureMenu
+              label="Antrenamente"
+              pathPrefix="/workouts"
+              items={trainingItems}
+            />
+            <FeatureMenu
+              label="Alimentatie"
+              pathPrefix="/nutrition"
+              items={nutritionItems}
+            />
+            {admin && (
+              <NavLink to="/admin" className={navLinkClass}>
+                Admin
+              </NavLink>
+            )}
+            {user && (
+              <NavLink to="/profile" className={navLinkClass}>
+                Profil
+              </NavLink>
+            )}
+            {user ? (
+              <button
+                type="button"
+                className="nav-link"
+                onClick={() => signOut(auth)}
+              >
+                Deconectare
+              </button>
+            ) : (
+              <NavLink to="/login" className={navLinkClass}>
+                Autentificare
+              </NavLink>
+            )}
+          </div>
+        </div>
+      </nav>
+    </>
   );
 }

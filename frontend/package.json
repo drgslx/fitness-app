@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test -c playwright.responsive.config.cjs"
   },
   "dependencies": {
     "@zxing/browser": "0.1.5",

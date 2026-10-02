@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+const { test, expect } = require("@playwright/test");
 const today = "2026-09-26";
 const baseProfile = {
   sex: "male", birth_date: "1996-01-01", height_cm: 176, activity_level: "moderate",
@@ -96,7 +96,7 @@ test("compact mobile layout and errors preserve unsaved inputs", async ({ page }
   await page.goto("/profile");
   await expect(page.getByLabel("Inaltime (cm)")).toHaveValue("176");
   await page.getByLabel("Inaltime (cm)").fill("180");
-  await page.getByRole("button", { name: "Actualizeaza datele" }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByLabel("Inaltime (cm)")).toHaveValue("180");
   await page.route("**/api/v1/profile", (route) => route.fulfill({ status: 503, json: { detail: "Serviciu indisponibil" } }));
   await page.getByRole("button", { name: "Salveaza profilul", exact: true }).click();

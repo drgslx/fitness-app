@@ -1,4 +1,4 @@
-const {test, expect} = require('@playwright/test');
+const {test,expect} = require('@playwright/test');
 const food={id:7,name:'Branza test',user_id:'test-user',calories:200,nutrients:{protein:12,carbohydrates:4,fat:15,salt:1},source:'openfoodfacts',barcode:'5941234567890',catalog_data:{nutriscore:'B',url:'https://world.openfoodfacts.org/product/5941234567890'}};
 async function setup(page){
  const calls=[];

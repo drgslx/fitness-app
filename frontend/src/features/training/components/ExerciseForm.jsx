@@ -1,3 +1,4 @@
+import Button from "../../../components/ui/Button";
 import React, { useState } from "react";
 
 const emptyExercise = () => ({
@@ -32,7 +33,7 @@ export default function ExerciseForm({
 
   return (
     <form onSubmit={submit}>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="form-grid">
         <label>
           Nume exercitiu
           <input
@@ -70,12 +71,9 @@ export default function ExerciseForm({
         </label>
       </div>
 
-      <button
-        type="submit"
-        disabled={disabled || !values.name.trim()}
-      >
+      <Button type="submit" disabled={disabled || !values.name.trim()}>
         {submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }
