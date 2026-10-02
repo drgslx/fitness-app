@@ -1,7 +1,6 @@
 import SectionTabs from "../../components/ui/SectionTabs";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FoodAttribution } from "../../components/FoodSearch";
 import FoodDetails from "../../components/foods/FoodDetails";
 import NutritionProgressPanel from "./NutritionProgressPanel";
 import useNutritionJournal from "./hooks/useNutritionJournal";
@@ -20,10 +19,7 @@ export default function JournalScreen() {
   const [tab, setTab] = useState("diary");
   const journal = useNutritionJournal();
   return (
-    <section className="min-w-0 space-y-4">
-      <p className="text-sm text-muted">
-        Produse per 100 g, portii in grame si obiective cu istoric.
-      </p>
+    <section className="min-w-0 space-y-6">
       <SectionTabs
         label="Sectiuni nutritie"
         items={tabs}
@@ -40,7 +36,6 @@ export default function JournalScreen() {
           {journal.error}
         </p>
       )}
-      <FoodAttribution />
       {tab === "diary" && <NutritionDiaryPanel journal={journal} />}
       {tab === "foods" && (
         <NutritionFoodCatalog

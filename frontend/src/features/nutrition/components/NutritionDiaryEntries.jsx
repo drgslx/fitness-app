@@ -23,7 +23,7 @@ function ItemName({ item, onDetails }) {
 }
 function ItemActions({ item, busy, onEdit, onRemove }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="diary-entry-actions flex flex-wrap items-center gap-3">
       <Button
         variant="secondary"
         type="button"
@@ -76,12 +76,12 @@ export default function NutritionDiaryEntries({
         {entries.map((item) => (
           <article
             key={`${item.entry_type}-${item.id}`}
-            className="min-w-0 space-y-3 rounded-xl border border-white/10 bg-surface p-3"
+            className="min-w-0 space-y-3 rounded-xl border border-white/10 bg-surface p-4"
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <ItemName {...{ item, onDetails }} />
-                <p className="text-xs text-muted break-words">
+                <p className="text-sm text-muted break-words">
                   {item.meal} ·{" "}
                   {item.entry_type === "recipe" ? "Reteta" : "Aliment"}
                 </p>

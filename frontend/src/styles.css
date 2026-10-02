@@ -35,7 +35,7 @@
     );
   }
   main {
-    @apply mx-auto w-full max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7;
+    @apply mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8 lg:py-7;
   }
   h1,
   h2,
@@ -159,13 +159,13 @@
     @apply border-transparent bg-transparent text-accent hover:bg-accent/10 hover:text-accent-hover;
   }
   .panel {
-    @apply my-4 flex min-w-0 flex-col gap-4 rounded-xl border border-white/10 bg-surface p-3 sm:p-4;
+    @apply my-4 flex min-w-0 flex-col gap-5 rounded-xl border border-white/10 bg-surface p-4 sm:p-5;
   }
   .card {
     @apply min-w-0 overflow-hidden rounded-xl border border-white/10 bg-surface transition-colors hover:border-accent/30;
   }
   .card-grid {
-    @apply grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3;
+    @apply grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3;
   }
   .form-grid {
     @apply grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2;
@@ -223,4 +223,21 @@
   .text-link {
     @apply min-h-11 border-0 bg-transparent px-0 py-2 text-left text-accent underline-offset-4 hover:bg-transparent hover:text-accent-hover hover:underline;
   }
+}
+
+/* Keep mobile sections distinct and controls comfortable to touch. */
+@media (max-width: 639px) {
+  main > header { margin-bottom: 1.5rem; }
+  main h1 { font-size: 1.875rem; }
+  .section-tabs { margin-block: 1.25rem; gap: .25rem; }
+  .tab { padding-inline: .875rem; }
+  .actions { align-items: stretch; gap: .75rem; }
+  .actions > .btn { flex: 1 1 8rem; }
+  .data-row { grid-template-columns: minmax(0, 1fr); gap: .375rem; padding-block: .875rem; }
+  .diary-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diary-metrics > :last-child { grid-column: 1 / -1; }
+  .diary-metrics .metric-value { font-size: 1.125rem; }
+  .diary-entry-actions > .btn { flex: 1; min-height: 44px; }
+  .food-result-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .food-result-actions > .btn { width: 100%; }
 }

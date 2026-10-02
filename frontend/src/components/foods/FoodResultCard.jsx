@@ -17,7 +17,7 @@ export default function FoodResultCard({
   return (
     <article
       key={food.id}
-      className="min-w-0 space-y-2 rounded-lg border border-white/10 p-3"
+      className="min-w-0 space-y-3 rounded-xl border border-white/10 bg-surface p-4"
     >
       {admin && food.is_public && (
         <label className="flex items-center gap-2 text-xs">
@@ -47,7 +47,7 @@ export default function FoodResultCard({
         {food.catalog_data?.nutriscore &&
           ` · Nutri-Score ${food.catalog_data.nutriscore}`}
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="food-result-actions flex flex-wrap gap-2 border-t border-white/10 pt-3">
         <Button variant="ghost" type="button" onClick={() => setDetails(food)}>
           Detalii
         </Button>

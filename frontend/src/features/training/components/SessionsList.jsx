@@ -1,6 +1,5 @@
 import React from "react";
 import Button from "../../../components/ui/Button";
-import ResponsiveTable from "../../../components/ui/ResponsiveTable";
 
 function ExerciseSummary({ exercise }) {
   const details = [`${exercise.sets} seturi`];
@@ -26,12 +25,28 @@ export default function SessionsList({
   onToggle,
 }) {
   return (
-    <ResponsiveTable
-      caption="Sesiunile planificate"
-      rows={plans}
-      rowKey={(plan) => plan.id}
-      columns={[
-        { key: "day", label: "Data" },
+    <section aria-label="Sesiunile planificate" className="space-y-2 pt-3">
+      {plans.map((plan) => (
+        <details key={plan.id} className="group min-w-0 rounded-xl border border-white/10 bg-surface">
+          <summary className="flex min-h-12 list-none items-center gap-2 px-3 text-sm hover:bg-raised/50 [&::-webkit-details-marker]:hidden sm:gap-4 sm:px-4">
+            <span className="min-w-0 max-w-[25%] truncate text-muted" title={plan.sport}>{plan.sport}</span>
+            <strong className={`min-w-0 flex-1 truncate ${plan.completed ? "text-muted line-through" : "text-copy"}`} title={plan.title}>{plan.title}</strong>
+            <time dateTime={plan.day} className="shrink-0 whitespace-nowrap text-xs text-muted sm:text-sm">{plan.day}</time>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4 shrink-0 text-muted transition-transform group-open:rotate-180">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </summary>
+          <dl className="grid gap-4 border-t border-white/10 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-[7rem_minmax(0,1fr)_5rem_minmax(0,1.4fr)_6rem_7rem]">
+            {[
+        {
+          key: "day",
+          label: "Data",
+          render: (plan) => (
+            <time dateTime={plan.day} className="whitespace-nowrap">
+              {plan.day}
+            </time>
+          ),
+        },
         {
           key: "title",
           label: "Sesiune",
@@ -64,7 +79,7 @@ export default function SessionsList({
           label: "Status",
           render: (plan) => (
             <span
-              className={`inline-block rounded-full px-2 py-1 text-xs font-semibold ${plan.completed ? "bg-accent/20 text-accent" : "bg-raised text-copy"}`}
+              className={`inline-block whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${plan.completed ? "bg-accent/20 text-accent" : "bg-raised text-copy"}`}
             >
               {plan.completed ? "Executat" : "Planificat"}
             </span>
@@ -74,7 +89,7 @@ export default function SessionsList({
           key: "actions",
           label: "Actiuni",
           render: (plan) => (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 [&_button]:whitespace-nowrap lg:flex-col lg:items-start">
               <Button
                 type="button"
                 disabled={busy}
@@ -101,7 +116,15 @@ export default function SessionsList({
             </div>
           ),
         },
-      ]}
-    />
+            ].map((column) => (
+              <div key={column.key} className={`min-w-0 ${column.key === "exercises" || column.key === "actions" ? "sm:col-span-2 lg:col-span-1" : ""}`}>
+                <dt className="mb-2 text-xs text-muted lg:uppercase lg:text-accent">{column.label}</dt>
+                <dd className="min-w-0 break-words text-sm">{column.render ? column.render(plan) : plan[column.key]}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      ))}
+    </section>
   );
 }

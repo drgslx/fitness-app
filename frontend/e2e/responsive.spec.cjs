@@ -38,6 +38,27 @@ for(const width of [320,390,640,768,1024,1280,1536]) {
   for(const path of ['/','/articles','/articles/test','/admin','/profile','/workouts/sessions','/workouts/catalog','/workouts/sports/new','/workouts/sessions/new','/workouts/reports','/nutrition/journal','/nutrition/recipes','/nutrition/foods/new','/nutrition/foods/7/edit','/nutrition/reports']){
    await page.goto(path);await expect(page.locator('main h1')).toBeVisible();
    await expect(page.locator('main')).not.toBeEmpty();await page.waitForLoadState('networkidle');await noOverflow(page);
+   if(path==='/workouts/sessions') {
+    const session=page.locator('details').filter({has:page.locator('summary', {hasText:'Sesiune cu titlu lung pentru mobil'})});
+    await expect(session).not.toHaveAttribute('open','');
+    await expect(session.locator('summary')).toContainText('Sala');
+    await expect(session.locator('summary time')).toHaveText('2026-09-30');
+    await expect(session.getByRole('button',{name:'Editeaza',exact:true})).toBeHidden();
+    await session.locator('summary').click();
+    await expect(session.getByText('Genuflexiuni cu haltera',{exact:true})).toBeVisible();
+    await expect(session.getByRole('button',{name:'Editeaza',exact:true})).toBeVisible();
+    await noOverflow(page);
+    await expect(session.locator('dl time')).toHaveCSS('white-space','nowrap');
+    await expect(session.locator('dl').getByText('Planificat',{exact:true})).toHaveCSS('white-space','nowrap');
+    if(width>=1024) {
+     const titleColumn=await session.locator('dl > div').nth(1).boundingBox();
+     const exerciseColumn=await session.locator('dl > div').nth(3).boundingBox();
+     expect(exerciseColumn.width).toBeGreaterThanOrEqual(titleColumn.width*1.3);
+    }
+    if([390,1280].includes(width)) await page.screenshot({path:`../review/${width}-sessions-expanded.png`,fullPage:true});
+    await session.locator('summary').click();
+    await expect(session.getByRole('button',{name:'Editeaza',exact:true})).toBeHidden();
+   }
    if([390,1280].includes(width) && ['/', '/profile','/nutrition/journal','/workouts/sessions'].includes(path)) await page.screenshot({path:`../review/${width}-${path.replaceAll('/','_')||'home'}.png`,fullPage:true});
    if(path==='/profile') {for(const name of ['Energia și activitatea zilnică','Greutate și progres','Date personale și obiectiv']) {await page.getByRole('button',{name,exact:true}).click();await noOverflow(page);}}
    if(path==='/nutrition/journal') {await page.getByRole('button',{name:'Catalog alimente',exact:true}).click();await page.getByLabel('Nume, marca sau cod de bare').fill('aliment');await page.getByRole('button',{name:'Cauta aliment',exact:true}).click();await expect(page.getByRole('button',{name:'Detalii',exact:true})).toBeVisible();await noOverflow(page);}

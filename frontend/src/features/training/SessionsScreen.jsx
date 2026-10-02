@@ -171,7 +171,6 @@ export default function SessionsScreen() {
             <div>
               <span className="eyebrow">Program</span>
               <h2>Planul saptamanii</h2>
-              <p>Sesiunile executate sunt taiate din lista.</p>
             </div>
 
             <span className="shrink-0 rounded-full bg-raised px-3 py-1 text-sm text-accent">

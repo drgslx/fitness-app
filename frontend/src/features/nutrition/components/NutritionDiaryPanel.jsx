@@ -28,7 +28,7 @@ export default function NutritionDiaryPanel({ journal }) {
   } = journal;
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0 space-y-6">
       <label className="max-w-sm">
         Ziua
         <input
@@ -40,7 +40,7 @@ export default function NutritionDiaryPanel({ journal }) {
           }}
         />
       </label>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="diary-metrics grid gap-3 sm:grid-cols-3">
         {[
           [
             "Consum",
@@ -64,7 +64,7 @@ export default function NutritionDiaryPanel({ journal }) {
       <form
         ref={formRef}
         onSubmit={submitEntry}
-        className="min-w-0 rounded-xl border border-white/10 bg-surface p-3 sm:p-4"
+        className="min-w-0 scroll-mt-24 gap-5 rounded-xl border border-white/10 bg-surface p-4 sm:p-5"
       >
         <h2 className="mb-0 text-xl">
           {entryId ? "Editeaza portia" : "Adauga o portie"}

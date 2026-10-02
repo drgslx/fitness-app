@@ -773,7 +773,7 @@ export default function WorkoutSessionForm({
             </Button>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
             {visibleExercises.map(({ exercise, index }) => (
               <fieldset
                 className="rounded-xl border border-white/15 p-3"
