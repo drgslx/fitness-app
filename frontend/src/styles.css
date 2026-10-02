@@ -35,7 +35,7 @@
     );
   }
   main {
-    @apply mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8 lg:py-7;
+    @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-7 2xl:max-w-[90rem];
   }
   h1,
   h2,

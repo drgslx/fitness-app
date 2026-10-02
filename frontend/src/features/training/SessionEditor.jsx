@@ -32,7 +32,7 @@ export default function SessionEditor() {
       await send("/workouts", "POST", payload);
     }
 
-    navigate("/workouts/sessions", {
+    navigate(`/workouts/sessions?day=${encodeURIComponent(payload.day)}`, {
       replace: true,
       state: {
         message: editing

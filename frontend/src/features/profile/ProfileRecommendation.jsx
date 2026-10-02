@@ -6,6 +6,7 @@ export default function ProfileRecommendation({
   data,
   isDirty,
 }) {
+  const maintenanceSource = recommendation.maintenance_source || data.activity_summary?.source;
   return (
     <section
       className={`${panel} space-y-3`}
@@ -98,14 +99,18 @@ export default function ProfileRecommendation({
         <p>{recommendation.reason}</p>
       )}
       <p className="text-sm text-accent">
-        {recommendation.maintenance_source === "activity_average"
+        {maintenanceSource === "activity_average"
           ? "Baza: media activitatii inregistrate"
-          : "Baza: estimare initiala; completeaza activitatea zilnica"}
+          : maintenanceSource === "sessions"
+            ? "Baza: nivelul stabilit dupa antrenamentele din ultimele 7 zile"
+            : "Baza: nivelul de activitate ales manual"}
       </p>
       <p className="text-xs text-muted">
         Estimare Mifflin–St Jeor. Dupa minimum 4 zile complete din ultimele 7,
         mentinerea foloseste media activitatii declarate. Pana atunci folosim
-        factorul initial. Nevoile individuale pot diferi.
+        nivelul stabilit dupa antrenamentele finalizate de peste 15 minute din ultimele
+        7 zile sau nivelul ales manual, daca nu exista astfel de antrenamente.
+        Nevoile individuale pot diferi.
       </p>
       <p className="text-xs text-muted">
         {data.profile?.auto_calories

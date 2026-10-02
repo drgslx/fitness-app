@@ -280,7 +280,7 @@ export default function EnergyPanel({ today, revision, onSaved }) {
               <p>
                 <strong>{day}</strong> ·{" "}
                 {selected.mode === "fallback"
-                  ? "Estimare initiala din profil; activitate necompletata"
+                  ? "Estimare din nivelul de activitate; datele zilei nu sunt completate"
                   : selected.complete
                     ? "Zi completa"
                     : "Estimare partiala / provizorie"}
@@ -329,10 +329,17 @@ export default function EnergyPanel({ today, revision, onSaved }) {
             total al zilei (TDEE).
           </p>
           <p>
-            Fara activitate inregistrata folosim temporar factorul din profil.
+            Pentru estimarea fara date zilnice, nivelul de activitate este ales
+            din sesiunile efectuate in ultimele 7 zile. Numaram doar sesiunile
+            de peste 15 minute. Cand nu exista astfel de sesiuni, folosim nivelul
+            manual din profil, pe care il poti modifica prin Editeaza profilul.
+          </p>
+          <p>
             Cu date folosim repaus + activitate neta + o ipoteza de 10% din
             repaus pentru activitate nemers + digestie estimata la 10% din
-            total. Nu adaugam pasi peste factorul initial.
+            total. Factorul de activitate nu se adauga peste acest calcul.
+            Sesiunile de cel mult 15 minute raman in jurnal si in calculul
+            energetic al zilei, dar nu cresc nivelul saptamanal de activitate.
           </p>
           <p>
             Mers: lungime aproximativa a pasului = 0,414 × inaltime; ~0,5

@@ -1,10 +1,17 @@
 import React from "react";
 import Button from "../../components/ui/Button";
-import { panel, goalLabels, activityOptions } from "./constants";
+import { activityOptions, panel } from "./constants";
+import PersonalProfileFields from "./PersonalProfileFields";
 export default function ProfileSettings({
   form,
   today,
   busy,
+  editing,
+  initialSetup,
+  permissions,
+  activitySummary,
+  startEdit,
+  cancelEdit,
   change,
   saveProfile,
 }) {
@@ -13,73 +20,44 @@ export default function ProfileSettings({
       <h2 id="profile-settings-title" className="text-xl">
         Date personale si obiectiv
       </h2>
+      {initialSetup ? (
+        <p className="text-sm text-muted">
+          Completeaza profilul pentru prima data. Sexul si data nasterii se pastreaza
+          dupa salvare. Inaltimea poate fi actualizata doar pana la 18 ani.
+        </p>
+      ) : (
+        <p className="text-sm text-muted">
+          Sexul si data nasterii sunt stabilite la crearea profilului.
+          Poti edita obiectivul{permissions.height_cm ? " si inaltimea, pana la 18 ani" : ""}.
+        </p>
+      )}
+      {activitySummary && (
+        <div className="mb-3 space-y-1" aria-label="Activitatea din ultimele 7 zile">
+          <p className="text-sm text-accent">
+            {activitySummary.source === "sessions" ? "Nivel stabilit automat" : "Nivel ales manual"}
+            {": "}{activityOptions.find(([value]) => value === activitySummary.activity_level)?.[1]}
+          </p>
+          <p className="text-xs text-muted">
+            {activitySummary.eligible_sessions_7} antrenamente finalizate de peste{" "}
+            {activitySummary.min_duration_minutes} minute in ultimele 7 zile
+            {" ("}{activitySummary.start}{" – "}{activitySummary.end}{")."}
+          </p>
+          <p className="text-xs text-muted">
+            {activitySummary.source === "sessions"
+              ? "Nivelul se actualizeaza dupa antrenamentele finalizate. Alegerea manuala ramane salvata si revine cand nu mai ai antrenamente de peste 15 minute in ultimele 7 zile."
+              : "Nu ai antrenamente finalizate de peste 15 minute in ultimele 7 zile. Poti edita nivelul ales manual; acesta se foloseste la estimare cand nu exista suficiente zile complete de activitate zilnica."}
+          </p>
+        </div>
+      )}
       <form onSubmit={saveProfile}>
-        <fieldset disabled={busy} className="border-0 p-0">
+        <fieldset disabled={busy || !editing} className="border-0 p-0">
+          <PersonalProfileFields
+            form={form}
+            today={today}
+            change={change}
+            permissions={permissions}
+          />
           <div className="grid gap-3 sm:grid-cols-2">
-            <label>
-              Sex folosit in calcul
-              <select
-                required
-                value={form.sex}
-                onChange={(e) => change("sex", e.target.value)}
-              >
-                <option value="">Alege</option>
-                <option value="female">Femeie</option>
-                <option value="male">Barbat</option>
-              </select>
-            </label>
-            <label>
-              Data nasterii
-              <input
-                type="date"
-                required
-                max={today}
-                value={form.birth_date}
-                onChange={(e) => change("birth_date", e.target.value)}
-              />
-            </label>
-            <label>
-              Inaltime (cm)
-              <input
-                type="number"
-                required
-                min="100"
-                max="250"
-                step="0.1"
-                placeholder="176"
-                value={form.height_cm}
-                onChange={(e) => change("height_cm", e.target.value)}
-              />
-            </label>
-            <label>
-              Obiectiv
-              <select
-                aria-label="Obiectiv"
-                value={form.goal}
-                onChange={(e) => change("goal", e.target.value)}
-              >
-                {Object.entries(goalLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="sm:col-span-2">
-              Activitate initiala (doar fallback)
-              <select
-                required
-                value={form.activity_level}
-                onChange={(e) => change("activity_level", e.target.value)}
-              >
-                <option value="">Alege nivelul aproximativ</option>
-                {activityOptions.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
             {form.goal === "lose" && (
               <label>
                 Deficit caloric
@@ -126,9 +104,8 @@ export default function ProfileSettings({
             )}
           </div>
           <p className="text-xs text-muted">
-            Alege activitatea totala, inclusiv mersul si munca zilnica.
-            Frecventa salii este doar un reper; necesarul nu este masurat
-            direct.
+            Nivelul manual se foloseste cand nu ai antrenamente finalizate de peste
+            15 minute in ultimele 7 zile. Estimarea nu masoara direct necesarul caloric.
           </p>
           {form.goal === "gain" && (
             <p className="text-xs text-muted">
@@ -144,6 +121,7 @@ export default function ProfileSettings({
               </a>
             </p>
           )}
+          <p className="text-sm text-muted">Setari pentru calculul si sincronizarea caloriilor</p>
           <label className="flex items-start gap-2">
             <input
               className="mt-1 shrink-0"
@@ -169,10 +147,22 @@ export default function ProfileSettings({
             Corectiile din aceeasi zi actualizeaza tinta zilei. Zilele trecute
             raman in istoric. O tinta manuala din jurnal opreste sincronizarea.
           </p>
-          <Button type="submit">
-            {busy ? "Se salveaza..." : "Salveaza profilul"}
-          </Button>
+          {editing && (
+            <Button type="submit">
+              {busy ? "Se salveaza..." : "Salveaza profilul"}
+            </Button>
+          )}
         </fieldset>
+        {!editing && (
+          <Button type="button" disabled={busy} onClick={startEdit}>
+            Editeaza profilul
+          </Button>
+        )}
+        {editing && !initialSetup && (
+          <Button type="button" variant="secondary" className="mt-2" disabled={busy} onClick={cancelEdit}>
+            Anuleaza
+          </Button>
+        )}
       </form>
     </section>
   );

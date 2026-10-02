@@ -4,11 +4,11 @@ export const secondary =
 export const danger =
   "border-red-400/30 bg-transparent text-red-200 hover:bg-red-950";
 export const activityOptions = [
-  ["sedentary", "Sedentar — fara antrenamente, predominant asezat"],
-  ["light", "Usor activ — aproximativ 1–3 antrenamente / saptamana"],
-  ["moderate", "Moderat — aproximativ 3–5 antrenamente / saptamana"],
-  ["high", "Foarte activ — aproximativ 6–7 antrenamente / saptamana"],
-  ["very_high", "Extrem de activ — munca fizica si antrenamente intense"],
+  ["sedentary", "Sedentar — 0 antrenamente / saptamana"],
+  ["light", "Usor activ — 1–2 antrenamente / saptamana"],
+  ["moderate", "Moderat — 3–4 antrenamente / saptamana"],
+  ["high", "Foarte activ — 5–6 antrenamente / saptamana"],
+  ["very_high", "Extrem de activ — 7 sau mai multe antrenamente / saptamana"],
 ];
 export const goalLabels = {
   lose: "Slabire",

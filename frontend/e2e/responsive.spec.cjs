@@ -79,7 +79,7 @@ test('mobile menu, escape, route close, active route and login form',async({page
  await expect(page).toHaveURL(/\/articles$/);await expect(page.getByRole('button',{name:'Meniu',exact:true})).toHaveAttribute('aria-expanded','false');
 });
 test('profile tab switch preserves draft without requesting data again',async({page})=>{
- const calls=await mock(page);await page.goto('/profile');await page.getByLabel('Inaltime (cm)').fill('180');
+ const calls=await mock(page);await page.goto('/profile');await page.getByRole('button',{name:'Editeaza profilul',exact:true}).click();await page.getByLabel('Obiectiv',{exact:true}).selectOption('lose');
  const count=calls.length;await page.getByRole('button',{name:'Greutate și progres',exact:true}).click();await page.getByRole('button',{name:'Date personale și obiectiv',exact:true}).click();
- await expect(page.getByLabel('Inaltime (cm)')).toHaveValue('180');expect(calls.length).toBe(count);
+ await expect(page.getByLabel('Obiectiv',{exact:true})).toHaveValue('lose');expect(calls.length).toBe(count);
 });

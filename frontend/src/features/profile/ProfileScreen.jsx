@@ -10,27 +10,7 @@ import { useAuth } from "../../auth";
 import { api, localDate, send } from "../../api/client";
 import EnergyPanel from "../../components/activity/EnergyPanel";
 import { dayList, formatValue } from "../../components/reports/periods";
-
-const blankProfile = () => ({
-  sex: "",
-  birth_date: "",
-  height_cm: "",
-  activity_level: "sedentary",
-  goal: "maintain",
-  deficit_percent: 10,
-  surplus_percent: 10,
-  target_weight_kg: "",
-  pregnant_or_breastfeeding: false,
-  auto_calories: true,
-  timezone:
-    Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Bucharest",
-});
-function editable(profile) {
-  const result = blankProfile();
-  for (const key of Object.keys(result))
-    if (profile?.[key] !== undefined) result[key] = profile[key] ?? "";
-  return result;
-}
+import { blankProfile, editableProfile, profilePayload, profilePermissions } from "./profileForm";
 
 function ProfileDashboard({ user }) {
   const [data, setData] = useState(null);
@@ -42,6 +22,7 @@ function ProfileDashboard({ user }) {
   const [revision, setRevision] = useState(0);
   const [visibleWeights, setVisibleWeights] = useState(12);
   const [tab, setTab] = useState("personal");
+  const [editing, setEditing] = useState(false);
   const dirty = useRef(false);
   const saving = useRef(false);
   const request = useRef(0);
@@ -55,7 +36,9 @@ function ProfileDashboard({ user }) {
       const next = await api("/profile");
       if (!mounted.current || id !== request.current) return;
       setData(next);
-      if (!dirty.current) setForm(editable(next.profile));
+      if (!dirty.current) setForm(editableProfile(next.profile));
+      else if (next.activity_summary?.source === "sessions" && next.profile)
+        setForm((current) => ({ ...current, activity_level: next.profile.activity_level }));
       if (initial.current) {
         setWeight({ day: next.today, weight_kg: "" });
         initial.current = false;
@@ -98,7 +81,8 @@ function ProfileDashboard({ user }) {
       setData(next);
       if (hydrate) {
         dirty.current = false;
-        setForm(editable(next.profile));
+        setForm(editableProfile(next.profile));
+        setEditing(false);
       }
       setRevision((value) => value + 1);
       setMessage(success);
@@ -113,17 +97,25 @@ function ProfileDashboard({ user }) {
     event.preventDefault();
     mutate(
       () =>
-        send("/profile", "PUT", {
+        send("/profile", "PUT", profilePayload({
           ...form,
-          height_cm: Number(form.height_cm),
-          target_weight_kg:
-            form.target_weight_kg === "" ? null : Number(form.target_weight_kg),
-        }),
+          activity_level: permissions.activity_level
+            ? form.activity_level
+            : data.profile?.activity_level ?? form.activity_level,
+        })),
       "Profil salvat. Recomandarea si tinta automata au fost reevaluate.",
       true,
     );
   }
   const today = data?.today || localDate();
+  const permissions = data?.edit_permissions || profilePermissions(data?.profile, today, data?.activity_summary);
+  function cancelEdit() {
+    dirty.current = false;
+    setForm(editableProfile(data.profile));
+    setEditing(false);
+    setError("");
+    setMessage("");
+  }
   const recommendation = data?.recommendation;
   const weights = data?.weights || [];
   const latest = weights[0];
@@ -216,6 +208,12 @@ function ProfileDashboard({ user }) {
                 form={form}
                 today={today}
                 busy={busy}
+                editing={!data.profile || editing}
+                initialSetup={!data.profile}
+                permissions={permissions}
+                activitySummary={data.activity_summary}
+                startEdit={() => setEditing(true)}
+                cancelEdit={cancelEdit}
                 change={change}
                 saveProfile={saveProfile}
               />

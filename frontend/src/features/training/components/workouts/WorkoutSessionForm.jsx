@@ -78,6 +78,7 @@ export default function WorkoutSessionForm({
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [copyingTemplate, setCopyingTemplate] = useState(false);
   const [message, setMessage] = useState("");
   const draftRef = useRef(null);
   const [form, setForm] = useState(() =>
@@ -280,8 +281,8 @@ export default function WorkoutSessionForm({
     }
   }
 
-  async function editTemplate(template) {
-    if (mutationRef.current) return;
+  async function editTemplate(template, temporary = false) {
+    if (mutationRef.current || (temporary && !form.day)) return;
     mutationRef.current = true;
     setBusy(true);
     setError("");
@@ -292,7 +293,8 @@ export default function WorkoutSessionForm({
       setForm(
         createSession({ ...current, title: current.name, day: form.day }),
       );
-      setEditingTemplate(current.id);
+      setEditingTemplate(temporary ? null : current.id);
+      setCopyingTemplate(temporary);
     } catch (currentError) {
       setError(currentError.message);
     } finally {
@@ -305,13 +307,16 @@ export default function WorkoutSessionForm({
     if (draftRef.current) setForm(draftRef.current);
     draftRef.current = null;
     setEditingTemplate(null);
+    setCopyingTemplate(false);
     setMode("template");
     setError("");
   }
 
   function cancelTemplateEdit() {
     if (busy) return;
-    if (!window.confirm("Renunti la modificarile nesalvate ale sablonului?"))
+    if (!window.confirm(copyingTemplate
+      ? "Renunti la modificarile temporare ale sesiunii?"
+      : "Renunti la modificarile nesalvate ale sablonului?"))
       return;
     closeTemplateEditor();
   }
@@ -375,9 +380,9 @@ export default function WorkoutSessionForm({
         ...exercise,
         name: exercise.name.trim(),
       })),
-      save_as_template: !editingTemplate && saveAsTemplate,
+      save_as_template: !editingTemplate && !copyingTemplate && saveAsTemplate,
       template_name:
-        !editingTemplate && saveAsTemplate
+        !editingTemplate && !copyingTemplate && saveAsTemplate
           ? templateName.trim() || form.title.trim()
           : null,
     };
@@ -444,7 +449,16 @@ export default function WorkoutSessionForm({
           </p>
         </aside>
       )}
-      {!editingTemplate && (
+      {copyingTemplate && (
+        <aside className="panel" role="note">
+          <h3>Modifica si adauga</h3>
+          <p>
+            Modifica aceasta copie, apoi adaug-o la data aleasa. Sablonul salvat
+            ramane neschimbat.
+          </p>
+        </aside>
+      )}
+      {!editingTemplate && !copyingTemplate && (
         <div className="my-3 flex flex-wrap items-center gap-3">
           {!editing && (
             <>
@@ -493,7 +507,7 @@ export default function WorkoutSessionForm({
         </div>
       )}
 
-      {!editing && !editingTemplate && mode === "template" ? (
+      {!editing && !editingTemplate && !copyingTemplate && mode === "template" ? (
         <section className="grid gap-3">
           <h3>Sesiunile mele salvate</h3>
 
@@ -509,8 +523,8 @@ export default function WorkoutSessionForm({
           </label>
           <p className="text-muted">
             Alege data, apoi foloseste o sesiune salvata pentru a o adauga
-            direct in plan. Poti edita apoi exercitiile si greutatile din
-            sesiunile saptamanii, fara sa modifici sablonul.
+            direct in plan sau alege „Modifica si adauga” pentru a ajusta sesiunea
+            inainte de adaugare, fara sa modifici sablonul.
           </p>
 
           {!templates.length && (
@@ -567,6 +581,15 @@ export default function WorkoutSessionForm({
                   onClick={() => editTemplate(template)}
                 >
                   Editeaza sablonul
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy || !form.day}
+                  onClick={() => editTemplate(template, true)}
+                >
+                  Modifica si adauga
                 </Button>
 
                 <Button
@@ -868,7 +891,7 @@ export default function WorkoutSessionForm({
             ))}
           </div>
 
-          {!editingTemplate && (
+          {!editingTemplate && !copyingTemplate && (
             <fieldset className="grid gap-3" disabled={busy}>
               <legend>Reutilizare</legend>
 
@@ -900,7 +923,7 @@ export default function WorkoutSessionForm({
           )}
 
           <div className="flex flex-wrap gap-2">
-            {editingTemplate && (
+            {(editingTemplate || copyingTemplate) && (
               <Button
                 type="button"
                 variant="secondary"
@@ -915,7 +938,9 @@ export default function WorkoutSessionForm({
                 ? "Se salveaza..."
                 : editingTemplate
                   ? "Salveaza sablonul"
-                  : submitLabel}
+                  : copyingTemplate
+                    ? "Adauga la data aleasa"
+                    : submitLabel}
             </Button>
           </div>
         </form>

@@ -38,7 +38,7 @@ export default function Navbar() {
           }
         }}
       >
-        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-2 px-4 py-2 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-2 px-4 py-2 sm:px-6 lg:px-8 2xl:max-w-[1800px]">
           <Link
             className="py-2 font-display text-lg font-bold tracking-widest text-accent no-underline"
             to="/"
