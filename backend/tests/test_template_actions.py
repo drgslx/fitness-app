@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.models.tracking import Workout, WorkoutTemplate, WorkoutLog
+from app.models.tracking import SportType, ExerciseDefinition, Workout, WorkoutTemplate, WorkoutLog
 from app.training import template_actions_router as routes
 
 
@@ -28,6 +28,13 @@ def client_and_db():
 
 
 def make_template(db, user_id="owner", is_active=True):
+    sport = SportType(user_id=user_id, name="Sala")
+    db.add(sport)
+    db.flush()
+    definition = ExerciseDefinition(user_id=user_id, sport_type_id=sport.id,
+                                    name="Ramat vertical", tracking_type="strength")
+    db.add(definition)
+    db.flush()
     exercises = [
         {"exercise_id": None, "name": f"Exercise {i}", "sets": 3, "reps": 8,
          "minutes": None, "weight_kg": 60.0, "notes": "control"}
@@ -35,9 +42,9 @@ def make_template(db, user_id="owner", is_active=True):
     ]
     exercises[0]["weight_kg"] = 70.0
     exercises += [
-        {"exercise_id": 46, "name": "Ramat vertical", "sets": 2, "reps": 8,
+        {"exercise_id": definition.id, "name": "Ramat vertical", "sets": 2, "reps": 8,
          "minutes": None, "weight_kg": 40.0, "notes": ""},
-        {"exercise_id": 46, "name": "Ramat vertical", "sets": 1, "reps": None,
+        {"exercise_id": definition.id, "name": "Ramat vertical", "sets": 1, "reps": None,
          "minutes": None, "weight_kg": 20.0, "notes": ""},
     ]
     template = WorkoutTemplate(user_id=user_id, name="Upper Body", sport="Sala",

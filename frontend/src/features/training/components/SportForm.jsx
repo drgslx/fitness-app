@@ -1,3 +1,6 @@
+import Button from "../../../components/ui/Button";
+import EnergyFields from "../../../components/activity/EnergyFields";
+import { localDate } from "../../../api/client";
 import React, { useState } from "react";
 
 export default function SportForm({
@@ -8,6 +11,11 @@ export default function SportForm({
   resetOnSuccess = true,
 }) {
   const [name, setName] = useState(initialValues.name);
+  const [energy, setEnergy] = useState({
+    activity_type: initialValues.activity_type ?? null,
+    duration_minutes: initialValues.default_duration_minutes ?? null,
+    intensity: initialValues.default_intensity || "moderate",
+  });
 
   async function submit(event) {
     event.preventDefault();
@@ -15,7 +23,12 @@ export default function SportForm({
     const trimmedName = name.trim();
     if (!trimmedName || disabled) return;
 
-    const success = await onSubmit({ name: trimmedName });
+    const success = await onSubmit({
+      name: trimmedName,
+      activity_type: energy.activity_type,
+      default_duration_minutes: energy.duration_minutes,
+      default_intensity: energy.intensity,
+    });
 
     if (success && resetOnSuccess) {
       setName("");
@@ -36,9 +49,18 @@ export default function SportForm({
         />
       </label>
 
-      <button type="submit" disabled={disabled || !name.trim()}>
+      <EnergyFields
+        value={energy}
+        onChange={(changes) =>
+          setEnergy((current) => ({ ...current, ...changes }))
+        }
+        disabled={disabled}
+        day={localDate()}
+        template
+      />
+      <Button type="submit" disabled={disabled || !name.trim()}>
         {submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }

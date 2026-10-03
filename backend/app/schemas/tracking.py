@@ -27,7 +27,23 @@ class Input(BaseModel):
     )
 
 
-class SportTypeIn(Input):
+class EnergyFields(Input):
+    sport_type_id: int | None = Field(default=None, gt=0)
+    activity_type: str | None = Field(default=None, max_length=40)
+
+
+class WorkoutCompletionIn(Input):
+    duration_minutes: float = Field(gt=0, le=600, allow_inf_nan=False)
+    intensity: Literal["moderate", "high", "very_high"]
+
+
+class SportDefaultsIn(Input):
+    activity_type: str | None = Field(default=None, max_length=40)
+    default_duration_minutes: float | None = Field(default=None, gt=0, le=600, allow_inf_nan=False)
+    default_intensity: Literal["moderate", "high", "very_high"] = "moderate"
+
+
+class SportTypeIn(SportDefaultsIn):
     name: str = Field(min_length=1, max_length=100)
 
 
@@ -50,7 +66,8 @@ class Exercise(Input):
     minutes: Positive | None = None
     weight_kg: NonNegative | None = None
     notes: str = Field(default="", max_length=500)
-class WorkoutIn(Input):
+class WorkoutIn(EnergyFields):
+    steps_included: int | None = Field(default=None, ge=0, le=100000)
     day: date
     title: str = Field(min_length=1, max_length=160)
     sport: str = Field(min_length=1, max_length=80)
@@ -58,7 +75,7 @@ class WorkoutIn(Input):
     exercises: list[Exercise] = Field(default_factory=list, max_length=100)
     save_as_template: bool = False
     template_name: str | None = Field(default=None, max_length=160)
-class WorkoutTemplateIn(Input):
+class WorkoutTemplateIn(EnergyFields):
     name: str = Field(min_length=1, max_length=160)
     sport: str = Field(min_length=1, max_length=80)
     notes: str = Field(default="", max_length=2000)
@@ -68,6 +85,8 @@ class NutrientIn(Input):
     label: str = Field(min_length=1, max_length=100)
     unit: str = Field(pattern=r"^(g|mg|mcg)$")
 class FoodIn(Input):
+    barcode: str | None = Field(default=None, pattern=r"^[0-9]{8,14}$")
+    is_public: bool = False
     name: str = Field(min_length=1, max_length=180)
     calories: NonNegative
     nutrients: dict[Key, NonNegative] = Field(default_factory=dict)

@@ -26,7 +26,8 @@ def profile_client(client, monkeypatch):
     app.dependency_overrides[current_user] = lambda: {"uid": "alice", "email": "alice@example.test"}
     with session() as db:
         for key in ("lose", "maintain", "gain"):
-            db.add(GoalType(key=key, label=key, description=""))
+            if db.get(GoalType, key) is None:
+                db.add(GoalType(key=key, label=key, description=""))
         db.commit()
     return test, session
 
@@ -43,6 +44,75 @@ def save_weight(test, day="2026-09-26", weight=82):
     return result.json()
 
 
+def test_first_setup_persists_registration_data_and_locks_identity(profile_client):
+    test, _ = profile_client
+    empty = test.get("/api/v1/profile").json()
+    assert empty["profile"] is None
+    assert all(empty["edit_permissions"].values())
+    registered = save_profile(test, goal="maintain")
+    loaded = test.get("/api/v1/profile").json()
+    for field in ("sex", "birth_date", "height_cm", "activity_level"):
+        assert loaded["profile"][field] == BASE[field]
+    assert loaded["profile"]["goal"] == "maintain"
+    assert loaded["edit_permissions"] == registered["edit_permissions"] == {
+        "sex": False, "birth_date": False, "height_cm": False,
+        "activity_level": False, "goal": True,
+    }
+
+
+@pytest.mark.parametrize("field,value", [
+    ("sex", "female"), ("birth_date", "2012-01-01"),
+    ("height_cm", 180), ("activity_level", "high"),
+])
+def test_saved_adult_profile_rejects_locked_changes_atomically(profile_client, field, value):
+    test, _ = profile_client
+    save_profile(test)
+    before = save_weight(test)
+    attempted = test.put("/api/v1/profile", json={**BASE, field: value, "goal": "gain"})
+    assert attempted.status_code == 422
+    after = test.get("/api/v1/profile").json()
+    assert after["profile"] == before["profile"]
+    assert after["active_goal"] == before["active_goal"]
+
+
+def test_goal_and_estimation_controls_remain_editable(profile_client):
+    test, _ = profile_client
+    save_profile(test)
+    before = save_weight(test)
+    updated = save_profile(test, goal="gain", surplus_percent=15, target_weight_kg=90)
+    assert updated["profile"]["goal"] == "gain"
+    assert updated["recommendation"]["target_kcal"] > before["recommendation"]["target_kcal"]
+    assert updated["active_goal"]["goal_type"] == "gain"
+    suspended = save_profile(test, pregnant_or_breastfeeding=True)
+    assert not suspended["recommendation"]["available"]
+    assert suspended["active_goal"] is None
+    manual = save_profile(test, auto_calories=False)
+    assert manual["profile"]["auto_calories"] is False
+
+
+def test_minor_can_update_height_until_eighteenth_birthday(profile_client, monkeypatch):
+    test, _ = profile_client
+    birthday = "2008-09-27"
+    initial = save_profile(test, birth_date=birthday)
+    assert initial["edit_permissions"]["height_cm"] is True
+    updated = save_profile(test, birth_date=birthday, height_cm=180)
+    assert updated["profile"]["height_cm"] == 180
+    assert not save_weight(test)["recommendation"]["available"]
+    monkeypatch.setattr(profile_api, "today_for", lambda _: date(2026, 9, 27))
+    assert test.get("/api/v1/profile").json()["edit_permissions"]["height_cm"] is False
+    assert test.put("/api/v1/profile", json={**BASE, "birth_date": birthday, "height_cm": 181}).status_code == 422
+    allowed = save_profile(test, birth_date=birthday, height_cm=180, goal="maintain")
+    assert allowed["profile"]["goal"] == "maintain"
+
+
+def test_minor_cannot_change_locked_registration_fields(profile_client):
+    test, _ = profile_client
+    birthday = "2012-01-01"
+    save_profile(test, birth_date=birthday)
+    for field, value in (("sex", "female"), ("birth_date", "2013-01-01")):
+        assert test.put("/api/v1/profile", json={**BASE, "birth_date": birthday, field: value}).status_code == 422
+
+
 @pytest.mark.parametrize("sex,rest", [("male", 1775), ("female", 1609)])
 @pytest.mark.parametrize("goal,adjustment", [("lose", -.10), ("maintain", 0), ("gain", .10)])
 def test_formula_and_goal_adjustments(profile_client, sex, rest, goal, adjustment):
@@ -52,8 +122,8 @@ def test_formula_and_goal_adjustments(profile_client, sex, rest, goal, adjustmen
     result = save_weight(test)
     estimate = result["recommendation"]
     assert estimate["resting_kcal"] == rest
-    assert estimate["maintenance_kcal"] == round(rest * 1.55)
-    assert estimate["target_kcal"] == round(rest * 1.55 * (1 + adjustment))
+    assert estimate["maintenance_kcal"] == round(rest * 1.2)
+    assert estimate["target_kcal"] == round(rest * 1.2 * (1 + adjustment))
     assert result["active_goal"]["calories"] == estimate["target_kcal"]
     assert result["active_goal"]["source"] == "profile"
     assert result["active_goal"]["goal_type"] == goal
@@ -66,6 +136,36 @@ def test_formula_and_goal_adjustments(profile_client, sex, rest, goal, adjustmen
 def test_reject_invalid_profile_input(profile_client, field, value):
     test, _ = profile_client
     assert test.put("/api/v1/profile", json={**BASE, field: value}).status_code == 422
+
+
+@pytest.mark.parametrize("change", [
+    {"sex": "female"}, {"birth_date": "1995-01-01"}, {"height_cm": 180},
+])
+def test_saved_adult_personal_data_cannot_be_changed(profile_client, change):
+    test, _ = profile_client
+    saved = save_profile(test)["profile"]
+    response = test.put("/api/v1/profile", json={**BASE, **change})
+    assert response.status_code == 422, response.text
+    assert test.get("/api/v1/profile").json()["profile"] == saved
+    updated = save_profile(test, goal="maintain")
+    assert updated["profile"]["goal"] == "maintain"
+    assert updated["profile"]["sex"] == saved["sex"]
+    assert updated["profile"]["birth_date"] == saved["birth_date"]
+    assert updated["profile"]["height_cm"] == saved["height_cm"]
+
+
+def test_height_can_be_updated_only_until_eighteenth_birthday(profile_client, monkeypatch):
+    test, _ = profile_client
+    birth = "2008-09-26"
+    monkeypatch.setattr(profile_api, "today_for", lambda _: date(2026, 9, 25))
+    save_profile(test, birth_date=birth)
+    updated = save_profile(test, birth_date=birth, height_cm=178)
+    assert updated["profile"]["height_cm"] == 178
+    assert test.put("/api/v1/profile", json={**BASE, "birth_date": "2007-09-26", "height_cm": 178}).status_code == 422
+    monkeypatch.setattr(profile_api, "today_for", lambda _: TODAY)
+    assert test.put("/api/v1/profile", json={**BASE, "birth_date": birth, "height_cm": 180}).status_code == 422
+    updated = save_profile(test, birth_date=birth, height_cm=178, goal="maintain")
+    assert updated["profile"]["height_cm"] == 178 and updated["profile"]["goal"] == "maintain"
 
 
 def test_history_recalculates_from_latest_weight_and_preserves_past_goals(profile_client, monkeypatch):
@@ -174,13 +274,16 @@ def test_future_invalid_weights_and_goal_reached(profile_client):
     assert result["recommendation"]["target_kcal"] == result["recommendation"]["maintenance_kcal"]
 
 
-def test_activity_level_changes_maintenance_even_when_stored_deficit_is_twenty(profile_client):
+def test_stored_initial_activity_level_does_not_override_executed_session_frequency(profile_client):
     test, _ = profile_client
     save_profile(test, goal="maintain", deficit_percent=20, activity_level="sedentary")
     low = save_weight(test)["recommendation"]
-    high = save_profile(test, goal="maintain", deficit_percent=20, activity_level="high")["recommendation"]
+    app.dependency_overrides[current_user] = lambda: {"uid": "bob"}
+    save_profile(test, goal="maintain", deficit_percent=20, activity_level="high")
+    high = save_weight(test)["recommendation"]
     assert low["target_kcal"] == round(1775 * 1.2)
-    assert high["target_kcal"] == round(1775 * 1.725)
+    assert high["target_kcal"] == low["target_kcal"]
+    assert high["activity_level"] == "sedentary"
     assert high["adjustment_percent"] == 0
 
 

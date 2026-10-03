@@ -14,10 +14,13 @@ from app.training.progress_router import router as progress_router
 
 
 
+from app.api.activity import router as activity_router
+
 app = FastAPI(title="Sport Platform API", version="0.3.0")
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
 app.get("/uploads/{name}")(read_image)
+app.include_router(activity_router, prefix="/api/v1")
 app.include_router(template_actions_router, prefix="/api/v1")
 app.include_router(progress_router, prefix="/api/v1")
 app.include_router(articles_router, prefix="/api/v1")

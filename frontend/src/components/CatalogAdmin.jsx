@@ -1,3 +1,4 @@
+import Button from "./ui/Button";
 import React, { useState } from "react";
 import { send } from "../api/client";
 export default function CatalogAdmin() {
@@ -20,7 +21,7 @@ export default function CatalogAdmin() {
     }
   }
   return (
-    <section className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl">
+    <section className="panel">
       <h2>Configurare catalog și obiective</h2>
       <p>
         Cheia trebuie să fie unică: litere mici, cifre, underscore; de exemplu
@@ -44,7 +45,7 @@ export default function CatalogAdmin() {
             <option>mcg</option>
           </select>
         </label>
-        <button disabled={busy}>Adaugă nutrient</button>
+        <Button disabled={busy}>Adaugă nutrient</Button>
       </form>
       <form onSubmit={(e) => submit(e, "/goal-types")}>
         <h3>Tip de obiectiv nou</h3>
@@ -60,7 +61,7 @@ export default function CatalogAdmin() {
           Descriere
           <textarea name="description" maxLength={500} />
         </label>
-        <button disabled={busy}>Adaugă obiectiv</button>
+        <Button disabled={busy}>Adaugă obiectiv</Button>
       </form>
       <p role="status">{message}</p>
     </section>

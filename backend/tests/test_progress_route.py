@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.models.tracking import SportType, Workout, WorkoutLog
+from app.models.tracking import ExerciseDefinition, SportType, Workout, WorkoutLog
 from app.training import progress_router
 
 
@@ -20,46 +20,46 @@ def test_reports_only_include_authenticated_users_completed_snapshots():
 
     Base.metadata.create_all(engine)
 
-    exercise_id = 17
     workout_day = date(2026, 9, 25)
 
     with Session(engine) as db:
 
-        for ident, uid, weight in [
-            (1, "owner", 62),
-            (2, "stranger", 999),
+        for uid, weight in [
+            ("owner", 62),
+            ("stranger", 999),
         ]:
-            db.add(
-                SportType(
-                    user_id=uid,
-                    name="Sala",
-                    is_active=True,
-                )
-            )
+            sport = SportType(user_id=uid, name="Sala", is_active=True)
+            db.add(sport)
+            db.flush()
+            definition = ExerciseDefinition(user_id=uid, sport_type_id=sport.id,
+                                            name="Ramat", tracking_type="strength")
+            db.add(definition)
+            db.flush()
+            if uid == "owner":
+                exercise_id = definition.id
 
             exercise = {
-                "exercise_id": exercise_id,
+                "exercise_id": definition.id,
                 "name": "Ramat",
                 "sets": 3,
                 "reps": 8,
                 "weight_kg": weight,
             }
 
-            db.add(
-                Workout(
-                    id=ident,
-                    user_id=uid,
-                    day=workout_day,
-                    sport="Sala",
-                    title=uid,
-                    notes="",
-                    exercises=[exercise],
-                )
+            plan = Workout(
+                user_id=uid,
+                day=workout_day,
+                sport="Sala",
+                title=uid,
+                notes="",
+                exercises=[exercise], sport_type_id=sport.id,
             )
+            db.add(plan)
+            db.flush()
 
             db.add(
                 WorkoutLog(
-                    workout_id=ident,
+                    workout_id=plan.id,
                     user_id=uid,
                     day=workout_day,
                     snapshot={
@@ -102,9 +102,6 @@ def test_reports_only_include_authenticated_users_completed_snapshots():
 
             data = result.json()
 
-            # foarte util momentan:
-            print(data)
-
             assert data["metrics"]["weight_kg"]["current"] == 62
             assert len(data["rows"]) == 1
 
@@ -113,6 +110,8 @@ def test_reports_only_include_authenticated_users_completed_snapshots():
             )
 
             assert catalog.status_code == 200
+            assert len(catalog.json()) == 1
+            assert len(catalog.json()[0]["exercises"]) == 1
 
             assert (
                 catalog.json()[0]["exercises"][0]["key"]

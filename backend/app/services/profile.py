@@ -6,10 +6,11 @@ from sqlalchemy import select
 from app.api.common import row
 from app.models.profile import BodyWeight
 from app.models.tracking import NutritionGoal
+from app.services.training_activity import summarize_activity
 
 
 # Approximate total activity multipliers, including exercise AND daily movement.
-# They are a user-selected assumption, not calories measured by the workout log.
+# The fallback uses the recent training frequency; recorded energy is calculated separately.
 ACTIVITY_FACTORS = {"sedentary": 1.2, "light": 1.375, "moderate": 1.55,
                     "high": 1.725, "very_high": 1.9}
 FORMULA_VERSION = "mifflin-st-jeor-v1"
@@ -19,12 +20,35 @@ def age_on(birth_date, today):
     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
 
 
+def activity_level_for_sessions(sessions):
+    if sessions == 0:
+        return "sedentary"
+    if sessions <= 2:
+        return "light"
+    if sessions <= 4:
+        return "moderate"
+    if sessions <= 6:
+        return "high"
+    return "very_high"
+
+
+def profile_edit_permissions(profile, today):
+    creating = profile is None
+    return {
+        "sex": creating,
+        "birth_date": creating,
+        "height_cm": creating or age_on(profile.birth_date, today) < 18,
+        "activity_level": creating,
+        "goal": True,
+    }
+
+
 def latest_weight(db, uid, today):
     return db.scalar(select(BodyWeight).where(BodyWeight.user_id == uid, BodyWeight.day <= today)
                      .order_by(BodyWeight.day.desc()).limit(1))
 
 
-def estimate(profile, weight, today):
+def estimate(profile, weight, today, maintenance_override=None, activity_level_override=None):
     result = {"available": False, "reason": "Completeaza profilul si adauga o greutate masurata.",
               "warnings": [], "options": []}
     if profile is None or weight is None:
@@ -43,7 +67,8 @@ def estimate(profile, weight, today):
         return result
 
     rest = 10 * weight.weight_kg + 6.25 * profile.height_cm - 5 * age + (5 if profile.sex == "male" else -161)
-    maintenance = rest * ACTIVITY_FACTORS[profile.activity_level]
+    activity_level = activity_level_override or profile.activity_level
+    maintenance = maintenance_override if maintenance_override is not None else rest * ACTIVITY_FACTORS[activity_level]
     reached = profile.target_weight_kg is not None and (
         (profile.goal == "lose" and weight.weight_kg <= profile.target_weight_kg) or
         (profile.goal == "gain" and weight.weight_kg >= profile.target_weight_kg))
@@ -76,10 +101,10 @@ def estimate(profile, weight, today):
         "weight_kg": weight.weight_kg, "weight_day": weight.day.isoformat(),
         "resting_kcal": round(rest), "maintenance_kcal": round(maintenance),
         "target_kcal": round(target), "adjustment_percent": percent, "effective_goal": goal,
-        "activity_factor": ACTIVITY_FACTORS[profile.activity_level], "formula": FORMULA_VERSION,
+        "activity_factor": ACTIVITY_FACTORS[activity_level], "formula": FORMULA_VERSION,
         "target_reached": reached,
         "inputs": {"sex": profile.sex, "age": age, "height_cm": profile.height_cm,
-                   "weight_kg": weight.weight_kg, "activity_level": profile.activity_level,
+                   "weight_kg": weight.weight_kg, "activity_level": activity_level,
                    "goal": goal, "adjustment_percent": percent},
     })
     return result
@@ -94,6 +119,25 @@ def is_valid_goal(goal, day):
     return goal is not None and (goal.valid_until is None or goal.valid_until >= day)
 
 
+def recommendation(db, profile, today, report=None):
+    from app.services.energy import energy_report
+    report = report if report is not None else energy_report(db, profile, today) if profile else None
+    activity = report["activity_summary"] if report else summarize_activity(profile, today, [])
+    maintenance = report["planning_maintenance_kcal"] if report else None
+    result = estimate(profile, latest_weight(db, profile.user_id, today) if profile else None, today,
+                      maintenance_override=maintenance,
+                      activity_level_override=report["week"]["activity_level"] if report else None)
+    result["maintenance_source"] = "activity_average" if maintenance is not None else "training_frequency"
+    result["complete_days_7"] = report["week"]["complete_days"] if report else 0
+    result["training_days_7"] = report["week"]["training_days"] if report else 0
+    result["training_sessions_7"] = report["week"]["sessions"] if report else 0
+    result["activity_level"] = report["week"]["activity_level"] if report else "sedentary"
+    result["activity_start"] = report["week"]["start"] if report else None
+    result["activity_end"] = report["week"]["end"] if report else None
+    result["energy_method"] = report["method"] if report else None
+    return result
+
+
 def sync_calorie_goal(db, profile, today):
     """Called in the same transaction as profile/weight edits, never from a GET.
 
@@ -103,13 +147,15 @@ def sync_calorie_goal(db, profile, today):
     if not profile.auto_calories:
         return
     current = latest_goal(db, profile.user_id, today)
-    result = estimate(profile, latest_weight(db, profile.user_id, today), today)
+    result = recommendation(db, profile, today)
     if not result["available"]:
         if current and current.source == "profile" and is_valid_goal(current, today):
             # Keep history, but do not serve an obsolete automatic target today.
             current.valid_until = today - timedelta(days=1)
         return
-    snapshot = {"formula": result["formula"], **result["inputs"]}
+    snapshot = {"formula": result["formula"], **result["inputs"],
+                "maintenance_source": result["maintenance_source"], "energy_method": result["energy_method"],
+                "maintenance_kcal": result["maintenance_kcal"]}
     if (is_valid_goal(current, today) and current.source == "profile"
             and current.calculation == snapshot and current.calories == result["target_kcal"]):
         return
@@ -128,15 +174,20 @@ def sync_calorie_goal(db, profile, today):
 
 
 def profile_payload(db, profile, uid, today):
+    from app.services.energy import energy_report
     weights = db.scalars(select(BodyWeight).where(BodyWeight.user_id == uid, BodyWeight.day <= today)
                          .order_by(BodyWeight.day.desc())).all()
     current = latest_goal(db, uid, today)
-    recommendation = estimate(profile, weights[0] if weights else None, today)
+    report = energy_report(db, profile, today) if profile else None
+    activity = report["activity_summary"] if report else summarize_activity(profile, today, [])
+    current_recommendation = recommendation(db, profile, today, report=report)
     return {
         "today": today.isoformat(),
         "profile": {key: value for key, value in row(profile).items() if key != "user_id"} if profile else None,
+        "edit_permissions": profile_edit_permissions(profile, today),
+        "activity_summary": activity,
         "weights": [{"id": item.id, "day": item.day, "weight_kg": item.weight_kg} for item in weights],
-        "recommendation": recommendation,
+        "recommendation": current_recommendation,
         "active_goal": row(current) if is_valid_goal(current, today) else None,
         "weight_change_kg": round(weights[0].weight_kg - weights[-1].weight_kg, 2) if len(weights) > 1 else None,
     }

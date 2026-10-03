@@ -9,19 +9,26 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.models.tracking import Workout, WorkoutLog, WorkoutTemplate
+from app.models.tracking import SportType, ExerciseDefinition, Workout, WorkoutLog, WorkoutTemplate
 from app.training import sessions_router
 
 
-def test_editing_workout_creates_independent_template_and_preserves_history():
+def test_editing_workout_creates_independent_template_and_updates_completion():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     Base.metadata.create_all(engine)
     with Session(engine) as db:
-        original = [{"exercise_id": 46, "name": "Ramat vertical", "sets": 2,
+        sport = SportType(user_id="owner", name="Sala")
+        db.add(sport)
+        db.flush()
+        definition = ExerciseDefinition(user_id="owner", sport_type_id=sport.id,
+                                        name="Ramat vertical", tracking_type="strength")
+        db.add(definition)
+        db.flush()
+        original = [{"exercise_id": definition.id, "name": "Ramat vertical", "sets": 2,
                      "reps": 8, "weight_kg": 70, "minutes": None, "notes": ""},
-                    {"exercise_id": 46, "name": "Ramat vertical", "sets": 1,
+                    {"exercise_id": definition.id, "name": "Ramat vertical", "sets": 1,
                      "reps": 8, "weight_kg": 20, "minutes": None, "notes": ""}]
         workout = Workout(user_id="owner", day=date(2026, 9, 23),
                           title="Upper body", sport="Sala", notes="",
@@ -56,7 +63,7 @@ def test_editing_workout_creates_independent_template_and_preserves_history():
             assert template.exercises[0]["weight_kg"] == 80
             assert len(template.exercises) == 2  # keep repeated exercise IDs
             db.expire_all()
-            assert db.get(WorkoutLog, log_id).snapshot["exercises"] == original
+            assert db.get(WorkoutLog, log_id).snapshot["exercises"] == updated
 
             body["save_as_template"] = False
             body["exercises"] = deepcopy(updated)
@@ -66,7 +73,7 @@ def test_editing_workout_creates_independent_template_and_preserves_history():
             db.expire_all()
             assert len(db.scalars(select(WorkoutTemplate)).all()) == 1
             assert db.get(WorkoutTemplate, template.id).exercises == updated
-            assert db.get(WorkoutLog, log_id).snapshot["exercises"] == original
+            assert db.get(WorkoutLog, log_id).snapshot["exercises"][0]["weight_kg"] == 90
 
             app.dependency_overrides[sessions_router.current_user] = lambda: {"uid": "stranger"}
             result = client.put(f"/api/v1/workouts/{workout_id}", json={**body, "save_as_template": True})
