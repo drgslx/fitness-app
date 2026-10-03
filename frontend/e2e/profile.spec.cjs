@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+const { test, expect } = require("@playwright/test");
 const today = "2026-09-26";
 const baseProfile = {
   sex: "male", birth_date: "1996-01-01", height_cm: 176, activity_level: "moderate",
@@ -7,9 +7,9 @@ const baseProfile = {
 };
 const missing = { available: false, reason: "Completeaza profilul si adauga o greutate masurata.", warnings: [], options: [] };
 
-async function setup(page, existing = false) {
-  const state = { today, profile: existing ? { ...baseProfile } : null, weights: [],
-    recommendation: missing, active_goal: null, weight_change_kg: null };
+async function setup(page, existing = false, changes = {}, recent = {}) {
+  const state = { today: recent.today || today, profile: existing ? { ...baseProfile, ...changes } : null, weights: [],
+    recommendation: { ...missing, ...recent.recommendation }, active_goal: null, weight_change_kg: null };
   const requests = [];
   await page.route("**/api/v1/energy", (route) => route.fulfill({ json: { available: false, reason: "Completeaza profilul" } }));
   // Test-only module interception: no authentication bypass exists in application code.
@@ -23,7 +23,7 @@ async function setup(page, existing = false) {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (path.endsWith("/summary")) return route.fulfill({ json: {
-      sessions: 3, sports: [{ name: "Sala", sessions: 3 }], entries: 6, logged_days: 2,
+      sessions: recent.sessions ?? 3, sports: [{ name: "Sala", sessions: recent.sessions ?? 3 }], entries: 6, logged_days: 2,
       calories: 4100, average_calories: 2050, average_difference: -100, days_with_target: 2,
     } });
     if (request.method() === "PUT") {
@@ -69,6 +69,11 @@ test("profile goal controls, save, weight correction, deletion and navigation", 
   await page.getByLabel("Surplus caloric").selectOption("15");
   await page.getByLabel("Obiectiv", { exact: true }).selectOption("maintain");
   await page.getByRole("button", { name: "Salveaza profilul", exact: true }).click();
+  await expect(page.getByLabel("Sex folosit in calcul")).toHaveCount(0);
+  await expect(page.getByLabel("Data nasterii")).toHaveCount(0);
+  await expect(page.getByLabel("Inaltime (cm)")).toHaveCount(0);
+  await expect(page.getByLabel("Obiectiv", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Salveaza profilul", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Greutate și progres", exact: true }).click();
   await expect(page.getByRole("button", { name: "Salveaza greutatea" })).toBeVisible();
   expect(requests[0].payload).toMatchObject({ goal: "maintain", deficit_percent: 20, surplus_percent: 15, activity_level: "light", height_cm: 176 });
@@ -94,14 +99,16 @@ test("compact mobile layout and errors preserve unsaved inputs", async ({ page }
   await page.setViewportSize({ width: 390, height: 844 });
   await setup(page, true);
   await page.goto("/profile");
-  await expect(page.getByLabel("Inaltime (cm)")).toHaveValue("176");
-  await page.getByLabel("Inaltime (cm)").fill("180");
-  await page.getByRole("button", { name: "Actualizeaza datele" }).click();
-  await expect(page.getByLabel("Inaltime (cm)")).toHaveValue("180");
+  const settings = page.locator("[aria-labelledby='profile-settings-title']");
+  await expect(settings.getByText("176 cm", { exact: true })).toBeVisible();
+  await settings.getByRole("button", { name: "Editeaza", exact: true }).click();
+  await expect(settings.getByLabel("Inaltime (cm)")).toHaveCount(0);
+  await settings.getByLabel("Obiectiv", { exact: true }).selectOption("lose");
   await page.route("**/api/v1/profile", (route) => route.fulfill({ status: 503, json: { detail: "Serviciu indisponibil" } }));
-  await page.getByRole("button", { name: "Salveaza profilul", exact: true }).click();
+  await page.getByRole("button", { name: "Salveaza obiectivul", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Serviciu indisponibil");
-  await expect(page.getByLabel("Inaltime (cm)")).toHaveValue("180");
+  await expect(page.getByLabel("Obiectiv", { exact: true })).toHaveValue("lose");
+  await expect(settings.getByText("176 cm", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -113,7 +120,8 @@ test("tabs preserve drafts without additional requests", async ({ page }) => {
   await page.goto("/profile");
   await expect(page.getByText("Sala: 3 sesiuni", { exact: true })).toBeVisible();
   await expect(page.locator("#profile-panel-energy")).toContainText("Completeaza profilul");
-  await page.getByLabel("Inaltime (cm)").fill("181");
+  await page.locator("[aria-labelledby='profile-settings-title']").getByRole("button", { name: "Editeaza", exact: true }).click();
+  await page.getByLabel("Obiectiv", { exact: true }).selectOption("gain");
   const before = reads.length;
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 844 });
@@ -123,10 +131,85 @@ test("tabs preserve drafts without additional requests", async ({ page }) => {
     await page.getByRole("button", { name: "Greutate și progres", exact: true }).click();
     await page.getByLabel("Greutate (kg)", { exact: true }).fill("79.5");
     await page.getByRole("button", { name: "Date personale și obiectiv", exact: true }).click();
-    await expect(page.getByLabel("Inaltime (cm)")).toHaveValue("181");
+    await expect(page.getByLabel("Obiectiv", { exact: true })).toHaveValue("gain");
     await page.getByRole("button", { name: "Greutate și progres", exact: true }).click();
     await expect(page.getByLabel("Greutate (kg)", { exact: true })).toHaveValue("79.5");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   }
   expect(reads.length).toBe(before);
+});
+
+test("saved adult profile only edits goal settings and can cancel changes", async ({ page }) => {
+  const requests = await setup(page, true);
+  await page.goto("/profile");
+  const settings = page.locator("[aria-labelledby='profile-settings-title']");
+  await expect(settings.getByText("01.01.1996", { exact: true })).toBeVisible();
+  await expect(settings.locator("input, select")).toHaveCount(0);
+  await expect(settings.getByRole("button", { name: "Salveaza obiectivul" })).toHaveCount(0);
+  await settings.getByRole("button", { name: "Editeaza", exact: true }).click();
+  await expect(settings.getByLabel("Sex folosit in calcul")).toHaveCount(0);
+  await expect(settings.getByLabel("Data nasterii")).toHaveCount(0);
+  await expect(settings.getByLabel("Inaltime (cm)")).toHaveCount(0);
+  await expect(settings.getByLabel("Activitate initiala (doar fallback)")).toHaveCount(0);
+  await settings.getByLabel("Obiectiv", { exact: true }).selectOption("lose");
+  await settings.getByLabel("Deficit caloric").selectOption("15");
+  await settings.getByRole("button", { name: "Anuleaza", exact: true }).click();
+  expect(requests).toHaveLength(0);
+  await expect(settings.locator("input, select")).toHaveCount(0);
+  await settings.getByRole("button", { name: "Editeaza", exact: true }).click();
+  await expect(settings.getByLabel("Obiectiv", { exact: true })).toHaveValue("maintain");
+  await settings.getByLabel("Obiectiv", { exact: true }).selectOption("gain");
+  await settings.getByLabel("Surplus caloric").selectOption("15");
+  await settings.getByRole("button", { name: "Salveaza obiectivul", exact: true }).click();
+  await expect(settings.getByRole("button", { name: "Editeaza", exact: true })).toBeVisible();
+  expect(requests[0].payload).toMatchObject({ ...baseProfile, goal: "gain", surplus_percent: 15 });
+  await expect(settings.locator("input, select")).toHaveCount(0);
+});
+
+for (const [birthDate, canEdit] of [["2008-09-27", true], ["2008-09-26", false]]) {
+  test(`height editing at the eighteenth birthday: ${birthDate}`, async ({ page }) => {
+    const requests = await setup(page, true, { birth_date: birthDate });
+    await page.goto("/profile");
+    const settings = page.locator("[aria-labelledby='profile-settings-title']");
+    await expect(settings.getByLabel("Inaltime (cm)")).toHaveCount(0);
+    await settings.getByRole("button", { name: "Editeaza", exact: true }).click();
+    await expect(settings.getByLabel("Sex folosit in calcul")).toHaveCount(0);
+    await expect(settings.getByLabel("Data nasterii")).toHaveCount(0);
+    if (canEdit) {
+      await settings.getByLabel("Inaltime (cm)").fill("178");
+      await settings.getByRole("button", { name: "Salveaza obiectivul", exact: true }).click();
+      await expect(settings.getByText("178 cm", { exact: true })).toBeVisible();
+      expect(requests[0].payload).toMatchObject({ birth_date: birthDate, sex: "male", height_cm: 178 });
+    } else {
+      await expect(settings.getByLabel("Inaltime (cm)")).toHaveCount(0);
+      await expect(settings.getByText("176 cm", { exact: true })).toBeVisible();
+    }
+  });
+}
+
+test("profile shows recent session level and a rolling week across month boundaries", async ({ page }) => {
+  await setup(page, true, { activity_level: "light" }, {
+    today: "2026-10-03", sessions: 5,
+    recommendation: { activity_level: "high", training_sessions_7: 5 },
+  });
+  const reads = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/profile/summary?")) reads.push(new URL(request.url()).searchParams);
+  });
+  await page.goto("/profile");
+  const settings = page.locator("[aria-labelledby='profile-settings-title']");
+  await expect(settings.getByText("Foarte activ · 5 sesiuni executate", { exact: true })).toBeVisible();
+  const summary = page.locator("[aria-labelledby='profile-summary-title']");
+  await expect(summary.getByText(/Ultimele 7 zile: 2026-09-27 – 2026-10-03/)).toBeVisible();
+  await expect(summary.getByText("Sala: 5 sesiuni", { exact: true })).toBeVisible();
+  expect(reads.at(-1).get("start")).toBe("2026-09-27");
+  expect(reads.at(-1).get("end")).toBe("2026-10-03");
+  await page.getByLabel("Interval activitate").selectOption("month");
+  await expect(page.getByLabel("Luna", { exact: true })).toHaveValue("2026-10");
+  await expect(summary.getByText(/Luna selectata: 2026-10-01 – 2026-10-03/)).toBeVisible();
+  expect(reads.at(-1).get("start")).toBe("2026-10-01");
+  await page.getByLabel("Interval activitate").selectOption("week");
+  await expect(summary.getByText(/Ultimele 7 zile: 2026-09-27 – 2026-10-03/)).toBeVisible();
+  expect(reads.at(-1).get("start")).toBe("2026-09-27");
+  await expect(settings.locator("input, select")).toHaveCount(0);
 });

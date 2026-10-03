@@ -16,11 +16,13 @@ router = APIRouter(tags=["training-progress"])
 
 
 def active_completed_logs(db, user_id, start=None, end=None):
+    from app.training.sessions_router import current_training_day
     query = (select(WorkoutLog, Workout)
              .join(Workout, WorkoutLog.workout_id == Workout.id)
              .outerjoin(SportType, and_(SportType.name == Workout.sport,
                                         SportType.user_id.in_([user_id, SYSTEM_CATALOG_UID])))
              .where(WorkoutLog.user_id == user_id, Workout.user_id == user_id,
+                    Workout.day <= current_training_day(db, user_id),
                     or_(SportType.id.is_(None), SportType.is_active.is_(True)))
              .order_by(WorkoutLog.day, WorkoutLog.id))
     if start is not None:

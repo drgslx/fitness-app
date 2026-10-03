@@ -12,7 +12,7 @@ from app.db.session import get_db
 from app.models.profile import BodyWeight, UserProfile
 from app.nutrition.reports_router import build_nutrition_report
 from app.schemas.profile import ProfileIn, WeightIn
-from app.services.profile import profile_payload, sync_calorie_goal
+from app.services.profile import age_on, profile_payload, sync_calorie_goal
 from app.training.progress_router import active_completed_logs
 
 router = APIRouter(tags=["profile"])
@@ -60,6 +60,11 @@ def set_profile(data: ProfileIn, user=Depends(current_user), db: Session = Depen
     if profile is None:
         profile = UserProfile(user_id=user["uid"])
         db.add(profile)
+    else:
+        if data.sex != profile.sex or data.birth_date != profile.birth_date:
+            raise HTTPException(422, "Sexul si data nasterii nu pot fi modificate dupa crearea profilului.")
+        if age_on(profile.birth_date, today_for(profile)) >= 18 and data.height_cm != profile.height_cm:
+            raise HTTPException(422, "Inaltimea poate fi modificata doar pentru utilizatorii sub 18 ani.")
     for key, value in data.model_dump().items():
         setattr(profile, key, value)
     today = today_for(profile)
@@ -110,6 +115,7 @@ def summary(start: date, end: date, response: Response,
     nutrition = build_nutrition_report(db, user["uid"], start, end)
     logs = {log.id: log for log in active_completed_logs(db, user["uid"], start, end)}.values()
     sports = {}
+    training_days = {log.day for log in logs}
     for log in logs:
         name = log.snapshot["sport"]
         sports[name] = sports.get(name, 0) + 1
@@ -119,6 +125,7 @@ def summary(start: date, end: date, response: Response,
     return {
         "start": start, "end": end,
         "sessions": sum(sports.values()),
+        "training_days": len(training_days),
         "sports": [{"name": name, "sessions": count} for name, count in sorted(sports.items())],
         "logged_days": len(days), "entries": sum(day["entries"] for day in days),
         "calories": round(calories, 2),

@@ -26,8 +26,6 @@ function createSession(session) {
     sport: session?.sport || "",
     sport_type_id: session?.sport_type_id ?? null,
     activity_type: session?.activity_type ?? null,
-    duration_minutes: session?.duration_minutes ?? null,
-    intensity: session?.intensity || "moderate",
     steps_included: session?.steps_included ?? null,
     notes: session?.notes || "",
     exercises: Array.isArray(session?.exercises)
@@ -130,8 +128,7 @@ export default function WorkoutSessionForm({
         setActivityTypes(typesResult);
         if (!initialSession) setForm((current) => {
           const preset = typesResult.find((type) => type.key === current.activity_type);
-          return preset ? { ...current, title: current.title || preset.label,
-            duration_minutes: current.duration_minutes ?? preset.duration_minutes } : current;
+          return preset ? { ...current, title: current.title || preset.label } : current;
         });
       } catch (currentError) {
         if (active) setError(currentError.message);
@@ -218,8 +215,6 @@ export default function WorkoutSessionForm({
       sport: value,
       sport_type_id: selected?.id ?? null,
       activity_type: selected?.activity_type ?? current.activity_type,
-      duration_minutes: selected?.default_duration_minutes ?? current.duration_minutes,
-      intensity: selected?.default_intensity || "moderate",
       exercises: [],
     }));
   }
@@ -362,8 +357,6 @@ export default function WorkoutSessionForm({
           notes: payload.notes,
           sport_type_id: payload.sport_type_id,
           activity_type: payload.activity_type,
-          duration_minutes: payload.duration_minutes,
-          intensity: payload.intensity,
           exercises: payload.exercises,
         });
         setTemplates((current) => current.map((item) =>
@@ -578,20 +571,8 @@ export default function WorkoutSessionForm({
             </label>
           </div>
 
-          <EnergyFields value={form} day={form.day} disabled={busy} template={Boolean(editingTemplate)}
+          <EnergyFields value={form} disabled={busy} template={Boolean(editingTemplate)} planning
             onChange={(changes) => setForm((current) => ({ ...current, ...changes }))} />
-          {selectedSport && !selectedSport.is_system && form.activity_type && form.duration_minutes && <button type="button" disabled={busy} onClick={async () => {
-            if (mutationRef.current) return;
-            mutationRef.current = true; setBusy(true); setError("");
-            try {
-              const updated = await send(`/sport-types/${selectedSport.id}/defaults`, "PUT", {
-                activity_type: form.activity_type, default_duration_minutes: form.duration_minutes, default_intensity: form.intensity,
-              });
-              setSports((current) => current.map((sport) => sport.id === updated.id ? updated : sport));
-              setMessage("Durata si intensitatea implicite au fost salvate pentru acest sport. Sesiunile existente raman neschimbate.");
-            } catch (err) { setError(err.message); }
-            finally { mutationRef.current = false; setBusy(false); }
-          }}>Pastreaza durata si intensitatea pentru acest sport</button>}
           {!selectedSport && form.activity_type && <button type="button" disabled={busy} onClick={async () => {
             if (mutationRef.current) return;
             const type = activityTypes.find((item) => item.key === form.activity_type);
@@ -599,8 +580,7 @@ export default function WorkoutSessionForm({
             mutationRef.current = true; setBusy(true); setError("");
             try {
               const existing = sports.find((item) => item.name.toLowerCase() === type.label.toLowerCase());
-              const sport = existing || await send("/sport-types", "POST", { name: type.label, activity_type: type.key,
-                default_duration_minutes: form.duration_minutes, default_intensity: form.intensity });
+              const sport = existing || await send("/sport-types", "POST", { name: type.label, activity_type: type.key });
               if (!existing) setSports((items) => [...items, sport]);
               setForm((current) => ({ ...current, sport: sport.name, sport_type_id: sport.id }));
             } catch (err) { setError(err.message); }

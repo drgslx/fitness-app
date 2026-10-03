@@ -3,19 +3,13 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api, localDate, send } from "../api/client";
 import EnergyPanel from "../components/activity/EnergyPanel";
+import { ACTIVITY_LABELS, ACTIVITY_OPTIONS as activityOptions } from "../components/activity/activityLevels";
 import TrendChart from "../components/reports/TrendChart";
 import { dayList, formatValue, ranges } from "../components/reports/periods";
 
 const panel = "min-w-0 rounded-xl border border-white/10 bg-surface/90 p-3 md:p-4";
 const secondary = "border-white/20 bg-transparent text-copy hover:bg-raised";
 const danger = "border-red-400/30 bg-transparent text-red-200 hover:bg-red-950";
-const activityOptions = [
-  ["sedentary", "Sedentar — fara antrenamente, predominant asezat"],
-  ["light", "Usor activ — aproximativ 1–3 antrenamente / saptamana"],
-  ["moderate", "Moderat — aproximativ 3–5 antrenamente / saptamana"],
-  ["high", "Foarte activ — aproximativ 6–7 antrenamente / saptamana"],
-  ["very_high", "Extrem de activ — munca fizica si antrenamente intense"],
-];
 const goalLabels = { lose: "Slabire", maintain: "Mentinere", gain: "Crestere masa musculara" };
 const blankProfile = () => ({
   sex: "", birth_date: "", height_cm: "", activity_level: "sedentary", goal: "maintain",
@@ -28,6 +22,17 @@ function editable(profile) {
   for (const key of Object.keys(result)) if (profile?.[key] !== undefined) result[key] = profile[key] ?? "";
   return result;
 }
+function ageOn(birthDate, today) {
+  const [year, month, day] = birthDate.split("-").map(Number);
+  const [currentYear, currentMonth, currentDay] = today.split("-").map(Number);
+  return currentYear - year - Number(currentMonth < month || (currentMonth === month && currentDay < day));
+}
+function SavedField({ label, value }) {
+  return <dl className="min-w-0 rounded-lg border border-white/10 bg-raised/40 p-3">
+    <dt className="text-sm text-muted">{label}</dt>
+    <dd className="mt-1 break-words font-semibold">{value}</dd>
+  </dl>;
+}
 function Metric({ label, value, detail }) {
   return <div className="min-w-0 rounded-lg border border-white/10 bg-raised/60 p-3">
     <p className="text-sm text-muted">{label}</p>
@@ -35,11 +40,14 @@ function Metric({ label, value, detail }) {
     {detail && <p className="text-xs text-muted">{detail}</p>}
   </div>;
 }
-function MonthSummary({ today, revision }) {
+function ActivitySummary({ today, revision }) {
+  const [period, setPeriod] = useState("week");
   const [month, setMonth] = useState(today.slice(0, 7));
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
-  const range = ranges(`${month}-01`, "month");
+  const rollingStart = new Date(`${today}T12:00:00`);
+  rollingStart.setDate(rollingStart.getDate() - 6);
+  const range = period === "week" ? { start: localDate(rollingStart), end: today } : ranges(`${month}-01`, "month");
   const end = range.end > today ? today : range.end;
   useEffect(() => {
     const controller = new AbortController();
@@ -53,9 +61,14 @@ function MonthSummary({ today, revision }) {
   return <section className={panel} aria-labelledby="profile-summary-title">
     <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
       <div><h2 id="profile-summary-title" className="text-xl">Activitatea mea</h2>
-        <p className="text-sm text-muted">{range.start} – {end}. Date din jurnal si sesiunile executate.</p></div>
-      <label>Luna<input type="month" required max={today.slice(0, 7)} value={month}
-        onChange={(event) => event.target.value && setMonth(event.target.value)} /></label>
+        <p className="text-sm text-muted">{period === "week" ? "Ultimele 7 zile" : "Luna selectata"}: {range.start} – {end}. Date din jurnal si sesiunile executate.</p></div>
+      <div className="flex flex-wrap gap-3">
+        <label>Interval activitate<select value={period} onChange={(event) => setPeriod(event.target.value)}>
+          <option value="week">Ultimele 7 zile</option><option value="month">Luna</option>
+        </select></label>
+        {period === "month" && <label>Luna<input type="month" required max={today.slice(0, 7)} value={month}
+          onChange={(event) => event.target.value && setMonth(event.target.value)} /></label>}
+      </div>
     </div>
     {error ? <p role="alert">{error}</p> : !result ? <p role="status">Se incarca activitatea...</p> : <>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -68,6 +81,7 @@ function MonthSummary({ today, revision }) {
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
         {result.sports.map((sport) => <span key={sport.name}>{sport.name}: {sport.sessions} sesiuni</span>)}
       </div>
+      {period === "week" && <p className="mt-2 text-sm text-accent">Sesiunile din aceeasi zi sunt numarate separat.</p>}
       <p className="mt-2 text-xs text-muted">Zilele fara jurnal nu sunt considerate zero. Diferenta fata de tinta nu reprezinta deficitul energetic real.</p>
     </>}
     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
@@ -88,6 +102,7 @@ function ProfileDashboard({ user }) {
   const [revision, setRevision] = useState(0);
   const [visibleWeights, setVisibleWeights] = useState(12);
   const [tab, setTab] = useState("personal");
+  const [editingProfile, setEditingProfile] = useState(false);
   const dirty = useRef(false);
   const saving = useRef(false);
   const request = useRef(0);
@@ -140,7 +155,7 @@ function ProfileDashboard({ user }) {
       const next = await work();
       if (!mounted.current) return;
       setData(next);
-      if (hydrate) { dirty.current = false; setForm(editable(next.profile)); }
+      if (hydrate) { dirty.current = false; setForm(editable(next.profile)); setEditingProfile(false); }
       setRevision((value) => value + 1);
       setMessage(success);
     } catch (err) {
@@ -152,12 +167,16 @@ function ProfileDashboard({ user }) {
   }
   function saveProfile(event) {
     event.preventDefault();
+    if (data.profile && !editingProfile) return;
     mutate(() => send("/profile", "PUT", {
       ...form, height_cm: Number(form.height_cm),
       target_weight_kg: form.target_weight_kg === "" ? null : Number(form.target_weight_kg),
     }), "Profil salvat. Recomandarea si tinta automata au fost reevaluate.", true);
   }
   const today = data?.today || localDate();
+  const creatingProfile = !data?.profile;
+  const editingGoal = creatingProfile || editingProfile;
+  const canEditHeight = creatingProfile || (editingProfile && ageOn(data.profile.birth_date, today) < 18);
   const recommendation = data?.recommendation;
   const weights = data?.weights || [];
   const latest = weights[0];
@@ -203,37 +222,61 @@ function ProfileDashboard({ user }) {
 
       <div className="grid items-start gap-3 xl:grid-cols-[1.3fr_1fr]">
         <section className={panel} aria-labelledby="profile-settings-title">
-          <h2 id="profile-settings-title" className="text-xl">Date personale si obiectiv</h2>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 id="profile-settings-title" className="text-xl">Date personale si obiectiv</h2>
+            {!creatingProfile && !editingProfile && <button type="button" className={secondary} disabled={busy}
+              onClick={() => { setForm(editable(data.profile)); setEditingProfile(true); setMessage(""); }}>
+              Editeaza
+            </button>}
+          </div>
           <form onSubmit={saveProfile}>
             <fieldset disabled={busy} className="border-0 p-0">
               <div className="grid gap-3 sm:grid-cols-2">
-                <label>Sex folosit in calcul<select required value={form.sex} onChange={(e) => change("sex", e.target.value)}>
+                {creatingProfile ? <label>Sex folosit in calcul<select required value={form.sex} onChange={(e) => change("sex", e.target.value)}>
                   <option value="">Alege</option><option value="female">Femeie</option><option value="male">Barbat</option>
-                </select></label>
-                <label>Data nasterii<input type="date" required max={today} value={form.birth_date} onChange={(e) => change("birth_date", e.target.value)} /></label>
-                <label>Inaltime (cm)<input type="number" required min="100" max="250" step="0.1" placeholder="176" value={form.height_cm} onChange={(e) => change("height_cm", e.target.value)} /></label>
-                <label>Obiectiv<select aria-label="Obiectiv" value={form.goal} onChange={(e) => change("goal", e.target.value)}>
+                </select></label> : <SavedField label="Sex folosit in calcul" value={data.profile.sex === "female" ? "Femeie" : "Barbat"} />}
+                {creatingProfile ? <label>Data nasterii<input type="date" required max={today} value={form.birth_date} onChange={(e) => change("birth_date", e.target.value)} /></label>
+                  : <SavedField label="Data nasterii" value={data.profile.birth_date.split("-").reverse().join(".")} />}
+                {canEditHeight ? <label>Inaltime (cm)<input type="number" required min="100" max="250" step="0.1" placeholder="176" value={form.height_cm} onChange={(e) => change("height_cm", e.target.value)} /></label>
+                  : <SavedField label="Inaltime (cm)" value={`${data.profile.height_cm} cm`} />}
+                {editingGoal ? <label>Obiectiv<select aria-label="Obiectiv" value={form.goal} onChange={(e) => change("goal", e.target.value)}>
                   {Object.entries(goalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select></label>
-                <label className="sm:col-span-2">Activitate initiala (doar fallback)<select required value={form.activity_level} onChange={(e) => change("activity_level", e.target.value)}>
+                </select></label> : <SavedField label="Obiectiv" value={goalLabels[data.profile.goal]} />}
+                {creatingProfile ? <label className="sm:col-span-2">Activitate initiala (doar fallback)<select required value={form.activity_level} onChange={(e) => change("activity_level", e.target.value)}>
                   <option value="">Alege nivelul aproximativ</option>
                   {activityOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select></label>
-                {form.goal === "lose" && <label>Deficit caloric<select value={form.deficit_percent} onChange={(e) => change("deficit_percent", Number(e.target.value))}>
+                </select></label> : <div className="sm:col-span-2"><SavedField label="Nivel de activitate / ultimele 7 zile"
+                  value={`${ACTIVITY_LABELS[recommendation.activity_level] || "Sedentar"} · ${recommendation.training_sessions_7 ?? 0} sesiuni executate`} />
+                  <p className="mt-1 text-xs text-muted">Nivel orientativ: 0 sedentar; 1–2 usor; 3–4 moderat; 5–6 foarte activ; 7+ extrem. Consumul se estimeaza separat din sport, durata si intensitatea fiecarei sesiuni.</p>
+                </div>}
+                {editingGoal && form.goal === "lose" && <label>Deficit caloric<select value={form.deficit_percent} onChange={(e) => change("deficit_percent", Number(e.target.value))}>
                   <option value={10}>10% — usor</option><option value={15}>15% — moderat</option><option value={20}>20% — mai pronuntat, maxim</option>
                 </select></label>}
-                {form.goal === "gain" && <label>Surplus caloric<select value={form.surplus_percent} onChange={(e) => change("surplus_percent", Number(e.target.value))}>
+                {editingGoal && form.goal === "gain" && <label>Surplus caloric<select value={form.surplus_percent} onChange={(e) => change("surplus_percent", Number(e.target.value))}>
                   <option value={5}>5% — conservator / avansati</option><option value={10}>10% — punct de pornire</option>
                   <option value={15}>15% — surplus mai mare</option><option value={20}>20% — maxim</option>
                 </select></label>}
-                {form.goal !== "maintain" && <label>Greutate tinta (kg, optional)<input type="number" min="25" max="400" step="0.1" value={form.target_weight_kg} onChange={(e) => change("target_weight_kg", e.target.value)} /></label>}
+                {editingGoal && form.goal !== "maintain" && <label>Greutate tinta (kg, optional)<input type="number" min="25" max="400" step="0.1" value={form.target_weight_kg} onChange={(e) => change("target_weight_kg", e.target.value)} /></label>}
+                {!editingGoal && data.profile.goal !== "maintain" && <>
+                  <SavedField label={data.profile.goal === "lose" ? "Deficit caloric" : "Surplus caloric"}
+                    value={`${data.profile.goal === "lose" ? data.profile.deficit_percent : data.profile.surplus_percent}%`} />
+                  {data.profile.target_weight_kg != null && <SavedField label="Greutate tinta" value={`${data.profile.target_weight_kg} kg`} />}
+                </>}
               </div>
-              <p className="text-xs text-muted">Alege activitatea totala, inclusiv mersul si munca zilnica. Frecventa salii este doar un reper; necesarul nu este masurat direct.</p>
+              {creatingProfile ? <p className="text-xs text-muted">Nivelul afisat dupa creare se actualizeaza automat din sesiunile executate in ultimele 7 zile.</p>
+                : <p className="mt-3 text-xs text-muted">Sexul si data nasterii sunt fixate la crearea profilului. Inaltimea poate fi actualizata doar pana la 18 ani.</p>}
               {form.goal === "gain" && <p className="text-xs text-muted">Pentru culturism, literatura descrie aproximativ 10–20% la incepatori/intermediari si o abordare mai conservatoare la avansati. Incepe prudent si ajusteaza dupa evolutia masurata. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6680710/" target="_blank" rel="noreferrer">Sursa</a></p>}
-              <label className="flex items-start gap-2"><input className="mt-1 shrink-0" type="checkbox" checked={form.pregnant_or_breastfeeding} onChange={(e) => change("pregnant_or_breastfeeding", e.target.checked)} />Sarcina sau alaptare — opreste estimarea automata</label>
-              <label className="flex items-start gap-2"><input className="mt-1 shrink-0" type="checkbox" checked={form.auto_calories} onChange={(e) => change("auto_calories", e.target.checked)} />Sincronizeaza automat tinta calorica in jurnal</label>
+              {creatingProfile ? <>
+                <label className="flex items-start gap-2"><input className="mt-1 shrink-0" type="checkbox" checked={form.pregnant_or_breastfeeding} onChange={(e) => change("pregnant_or_breastfeeding", e.target.checked)} />Sarcina sau alaptare — opreste estimarea automata</label>
+                <label className="flex items-start gap-2"><input className="mt-1 shrink-0" type="checkbox" checked={form.auto_calories} onChange={(e) => change("auto_calories", e.target.checked)} />Sincronizeaza automat tinta calorica in jurnal</label>
+              </> : data.profile.pregnant_or_breastfeeding && <p className="text-sm text-muted">Sarcina sau alaptare — estimarea automata este oprita.</p>}
               <p className="text-xs text-muted">La salvarea profilului sau greutatii, tinta se aplica de azi. Corectiile din aceeasi zi actualizeaza tinta zilei. Zilele trecute raman in istoric. O tinta manuala din jurnal opreste sincronizarea.</p>
-              <button type="submit">{busy ? "Se salveaza..." : "Salveaza profilul"}</button>
+              {editingGoal && <div className="mt-3 flex flex-wrap gap-2">
+                <button type="submit">{busy ? "Se salveaza..." : creatingProfile ? "Salveaza profilul" : "Salveaza obiectivul"}</button>
+                {editingProfile && <button type="button" className={secondary} onClick={() => {
+                  dirty.current = false; setForm(editable(data.profile)); setEditingProfile(false); setError("");
+                }}>Anuleaza</button>}
+              </div>}
             </fieldset>
           </form>
         </section>
@@ -257,13 +300,13 @@ function ProfileDashboard({ user }) {
             {recommendation.effective_goal === "lose" && <p className="text-xs text-muted">* Echivalent energetic simplificat (7.700 kcal/kg), nu o predictie a kilogramelor pierdute. Apa, compozitia corporala si adaptarea metabolica schimba evolutia reala.</p>}
             {recommendation.warnings.map((warning) => <p key={warning} className="text-sm text-amber-200">{warning}</p>)}
           </> : <p>{recommendation.reason}</p>}
-          <p className="text-sm text-accent">{recommendation.maintenance_source === "activity_average" ? "Baza: media activitatii inregistrate" : "Baza: estimare initiala; completeaza activitatea zilnica"}</p>
-          <p className="text-xs text-muted">Estimare Mifflin–St Jeor. Dupa minimum 4 zile complete din ultimele 7, mentinerea foloseste media activitatii declarate. Pana atunci folosim factorul initial. Nevoile individuale pot diferi.</p>
+          <p className="text-sm text-accent">{recommendation.maintenance_source === "activity_average" ? "Baza: media activitatii inregistrate" : "Baza: frecventa antrenamentelor din ultimele 7 zile"}</p>
+          <p className="text-xs text-muted">Estimare Mifflin–St Jeor. Dupa minimum 4 zile complete din ultimele 7, mentinerea foloseste media activitatii declarate, cu toate sesiunile fiecarei zile. Pana atunci folosim factorul orientativ corespunzator numarului de sesiuni executate. Nevoile individuale pot diferi.</p>
           <p className="text-xs text-muted">{data.profile?.auto_calories ? "Sincronizare automata activata." : "Tinta din jurnal ramane manuala sau fixata la ultima valoare."} {data.active_goal?.protein ? `Tinta de proteine pastrata: ${formatValue(data.active_goal.protein)} g/zi.` : "Poti configura separat tinta de proteine in jurnal."}</p>
         </section>
       </div>
 
-      <MonthSummary today={today} revision={revision} />
+      <ActivitySummary today={today} revision={revision} />
       </div>
 
       <div id="profile-panel-energy" role="region" aria-labelledby="profile-tab-energy"

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, send } from "../../api/client";
+import { ACTIVITY_LABELS } from "./activityLevels";
 const blank = { steps: "", steps_scope: "total", complete: false };
 const kcal = (v) => v == null ? "—" : `~${v.toLocaleString("ro-RO")} kcal`;
 
@@ -70,6 +71,8 @@ export default function EnergyPanel({ today, revision, onSaved }) {
         <div><p className="text-sm text-muted">Pasi medii / zi completa</p><strong>{data.week.average_steps ?? "—"}</strong></div>
         <div><p className="text-sm text-muted">Sesiuni / ultimele 7 zile</p><strong>{data.week.sessions} · {data.week.training_minutes} minute</strong></div>
       </div>
+      <p className="text-sm text-accent">Nivel de activitate: {ACTIVITY_LABELS[data.week.activity_level] || "Sedentar"} · {data.week.sessions} sesiuni executate.</p>
+      {data.week.start && <p className="text-xs text-muted">Ultimele 7 zile: {data.week.start} – {data.week.end}. Fiecare sesiune contribuie separat la consumul zilei, inclusiv cand faci mai multe antrenamente in aceeasi zi.</p>}
       <p className="text-sm">Date disponibile: <strong>{{ basic: "Initiale", improving: "In completare", history: "Istoric extins" }[data.coverage.level]}</strong> · {data.coverage.complete_days_28}/28 zile complete. Personalizare din activitatea declarata; precizia nu este masurata, calibrarea dupa greutate nu este activa.</p>
       <form onSubmit={save} className="grid gap-2">
         <fieldset disabled={busy} className="grid gap-3 border-0 p-0 sm:grid-cols-3">
@@ -103,7 +106,7 @@ export default function EnergyPanel({ today, revision, onSaved }) {
     <details className="text-sm"><summary className="cursor-pointer text-accent">Cum se calculeaza?</summary>
       <div className="mt-2 grid gap-2 text-muted">
         <p>Estimarea initiala foloseste Mifflin–St Jeor: 10 × kg + 6,25 × cm − 5 × varsta, apoi +5 pentru barbati sau −161 pentru femei. Este energie in repaus estimata (RMR, numita frecvent BMR), nu consumul total al zilei (TDEE).</p>
-        <p>Fara activitate inregistrata folosim temporar factorul din profil. Cu date folosim repaus + activitate neta + o ipoteza de 10% din repaus pentru activitate nemers + digestie estimata la 10% din total. Nu adaugam pasi peste factorul initial.</p>
+        <p>Nivelul orientativ foloseste numarul sesiunilor executate din ultimele 7 zile: 0 sedentar, 1–2 usor, 3–4 moderat, 5–6 foarte activ, 7+ extrem. Fara zile complete suficiente folosim factorul acestui nivel. Cu date folosim repaus + activitate neta + o ipoteza de 10% din repaus pentru activitate nemers + digestie estimata la 10% din total. Sesiunile din aceeasi zi se calculeaza separat, cu sportul, durata si intensitatea fiecareia. Nu adaugam pasi peste factorul de activitate.</p>
         <p>Mers: lungime aproximativa a pasului = 0,414 × inaltime; ~0,5 kcal/kg/km net. Sunt ipoteze pentru mers pe teren plat, nu masuratori. Sesiuni: (MET − 1) × kg × ore; MET-ul mediu include pauzele. Greutatea este ultima masurata pana la data activitatii.</p>
         <p>Pasii inclusi deja in sesiunile sportive se scad din totalul zilnic. Daca nu cunoastem suprapunerea, nu adaugam energia mersului si ziua nu intra in media pentru planificare. Lipsa datelor nu este zero.</p>
         <p>Media foloseste zile complete din ultimele 7, inclusiv zile de odihna. Minimum 4 este un prag de produs, nu validare stiintifica. Zilele partiale si cele fara date nu intra. Introducerea doar a zilelor active poate supraestima media.</p>

@@ -30,8 +30,11 @@ class Input(BaseModel):
 class EnergyFields(Input):
     sport_type_id: int | None = Field(default=None, gt=0)
     activity_type: str | None = Field(default=None, max_length=40)
-    duration_minutes: float | None = Field(default=None, gt=0, le=600, allow_inf_nan=False)
-    intensity: Literal["moderate", "high", "very_high"] = "moderate"
+
+
+class WorkoutCompletionIn(Input):
+    duration_minutes: float = Field(gt=0, le=600, allow_inf_nan=False)
+    intensity: Literal["moderate", "high", "very_high"]
 
 
 class SportDefaultsIn(Input):

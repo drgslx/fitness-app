@@ -4,9 +4,9 @@ import {
   useLocation,
   useNavigate,
   useSearchParams,
-  NavLink,
 } from "react-router-dom";
 import { api, send, localDate } from "../api/client";
+import WorkoutCompletionDialog, { INTENSITY_LABELS } from "../features/training/components/workouts/WorkoutCompletionDialog";
 
 function weekRange(day) {
   const start = new Date(day + "T12:00:00");
@@ -76,6 +76,7 @@ export default function WorkoutSessionsPage() {
   const [plans, setPlans] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [completionSession, setCompletionSession] = useState(null);
 
   const range = useMemo(() => weekRange(day), [day]);
 
@@ -122,6 +123,18 @@ export default function WorkoutSessionsPage() {
     }
 
     action(() => send(`/workouts/${plan.id}`, "DELETE"));
+  }
+
+  async function saveCompletion(values) {
+    setBusy(true);
+    setError("");
+    try {
+      await send(`/workouts/${completionSession.id}/completion`, "PUT", values);
+      await load();
+      setCompletionSession(null);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -195,7 +208,7 @@ export default function WorkoutSessionsPage() {
             <div>
               <span className="mb-2 block text-xs font-bold uppercase tracking-[.14em] text-accent">Program</span>
               <h2>Planul saptamanii</h2>
-              <p>Sesiunile executate sunt taiate din lista.</p>
+              <p>Deschide o sesiune pentru a vedea exercitiile si notele.</p>
             </div>
 
             <span className="shrink-0 rounded-full bg-raised px-3 py-1 text-sm text-accent">
@@ -204,108 +217,59 @@ export default function WorkoutSessionsPage() {
             </span>
           </div>
 
-          <div className="w-full min-w-0 overflow-x-auto rounded-xl border border-white/10">
-            <table className="w-full min-w-[720px] table-fixed [&_td]:break-words [&_td]:whitespace-normal">
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Sesiune</th>
-                  <th>Sport</th>
-                  <th>Exercitii</th>
-                  <th>Status</th>
-                  <th>Actiuni</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {plans.map((plan) => (
-                  <tr
-                    key={plan.id}
-                    className={
-                      plan.completed ? "bg-[#102419] [&_td:first-child]:shadow-[inset_4px_0_0_#72f29c]" : ""
-                    }
-                  >
-                    <td>{plan.day}</td>
-
-                    <td>
-                      <strong>{plan.title}</strong>
-                    {plan.duration_minutes && <small className="block text-muted">{plan.duration_minutes} min · {plan.intensity}</small>}
-
-                      {plan.notes && (
-                        <small className="mt-1 block text-sm font-normal text-muted">
-                          {plan.notes}
-                        </small>
-                      )}
-                    </td>
-
-                    <td>{plan.sport}</td>
-
-                    <td>
-                      <ul className="grid min-w-0 list-none gap-2 p-0 [&_li]:grid [&_li]:min-w-0 [&_li]:gap-1 [&_li]:break-words [&_li]:rounded-lg [&_li]:border [&_li]:border-white/10 [&_li]:bg-[#111f17] [&_li]:p-2 [&_li_span]:text-xs [&_li_span]:text-[#adbbb2]">
-                        {plan.exercises.map((exercise, index) => (
-                          <ExerciseSummary
-                            key={`${plan.id}-${index}`}
-                            exercise={exercise}
-                          />
-                        ))}
-                      </ul>
-                    </td>
-
-                    <td>
-                      <span
-                        className={
-                          plan.completed
-                            ? "inline-flex rounded-full border border-accent bg-accent px-3 py-1 text-xs font-bold text-ink"
-                            : "inline-flex rounded-full border border-[#65756c] bg-[#18241d] px-3 py-1 text-xs font-bold text-[#cbd5cf]"
-                        }
-                      >
-                        {plan.completed ? "Executat" : "Planificat"}
-                      </span>
-                    </td>
-
-                    <td className="align-top">
-                      <div className="grid min-w-0 gap-2 [&_button]:w-full [&_button]:px-2 [&_button]:py-1 [&_button]:text-xs">
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() =>
-                            action(() =>
-                              send(
-                                `/workouts/${plan.id}/completion`,
-                                plan.completed ? "DELETE" : "PUT"
-                              )
-                            )
-                          }
-                        >
-                          {plan.completed ? "Anuleaza" : "Executat"}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]"
-                          disabled={busy}
-                          onClick={() => editSession(plan)}
-                        >
-                          Editeaza
-                        </button>
-
-                        <button
-                          type="button"
-                          className="!border-[#82433f] !bg-[#321a18] !text-[#ffaaa3] hover:!border-[#ff766e] hover:!bg-[#46211e]"
-                          disabled={busy}
-                          onClick={() => deleteSession(plan)}
-                        >
-                          Sterge
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid min-w-0 gap-3">
+            {plans.map((plan) => (
+              <article key={plan.id} aria-label={`Sesiune ${plan.title} din ${plan.day}`}
+                className={`min-w-0 overflow-hidden rounded-xl border ${plan.completed ? "border-accent/30 bg-[#102419]" : "border-white/10 bg-ink/40"}`}>
+                <details name="week-sessions" className="group">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 p-4 focus-visible:outline-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
+                    <span aria-hidden="true" className="shrink-0 text-xl text-accent transition-transform group-open:rotate-90">›</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted"><time dateTime={plan.day}>{plan.day}</time> · {plan.sport}</p>
+                      <strong className={`block break-words ${plan.completed ? "text-muted line-through" : ""}`}>{plan.title}</strong>
+                      <small className="block text-muted">{plan.exercises.length} exercitii</small>
+                      {plan.completed && plan.duration_minutes && <small className="block text-muted">
+                        {plan.duration_minutes} min · {INTENSITY_LABELS[plan.intensity] || "Intensitate lipsa"}
+                      </small>}
+                    </div>
+                    <span className={`shrink-0 rounded-full border px-2 py-1 text-xs font-bold ${plan.completed
+                      ? "border-accent bg-accent text-ink" : "border-[#65756c] bg-[#18241d] text-[#cbd5cf]"}`}>
+                      {plan.completed ? "Executat" : "Planificat"}
+                    </span>
+                  </summary>
+                  <div className="grid gap-3 border-t border-white/10 p-4">
+                    {plan.notes && <p className="break-words text-sm text-muted">{plan.notes}</p>}
+                    {plan.exercises.length ? <ul className="grid min-w-0 list-none gap-2 p-0 sm:grid-cols-2 [&_li]:grid [&_li]:min-w-0 [&_li]:gap-1 [&_li]:break-words [&_li]:rounded-lg [&_li]:border [&_li]:border-white/10 [&_li]:bg-[#111f17] [&_li]:p-3 [&_li_span]:text-xs [&_li_span]:text-[#adbbb2]">
+                      {plan.exercises.map((exercise, index) => <ExerciseSummary key={`${plan.id}-${index}`} exercise={exercise} />)}
+                    </ul> : <p className="text-sm text-muted">Sesiune fara exercitii individuale.</p>}
+                  </div>
+                </details>
+                {plan.can_complete === false && <p className="px-4 pb-3 text-xs text-muted">
+                  Sesiune planificata in viitor. Executarea va fi disponibila din {plan.day}.
+                  {plan.has_completion && " Executarea inregistrata anterior nu este inclusa in rapoarte; o poti anula."}
+                </p>}
+                <div className="flex flex-wrap gap-2 border-t border-white/10 px-4 py-3 [&_button]:px-3 [&_button]:py-2 [&_button]:text-xs">
+                  <button type="button" disabled={busy || (!(plan.completed || plan.has_completion) && plan.can_complete === false)}
+                    onClick={() => plan.completed || plan.has_completion
+                    ? action(() => send(`/workouts/${plan.id}/completion`, "DELETE"))
+                    : setCompletionSession(plan)}>
+                    {plan.completed || plan.has_completion ? "Anuleaza" : "Executat"}
+                  </button>
+                  {plan.completed && <button type="button" disabled={busy} onClick={() => setCompletionSession(plan)}>
+                    Durata si intensitate
+                  </button>}
+                  <button type="button" className="!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]"
+                    disabled={busy} onClick={() => editSession(plan)}>Editeaza</button>
+                  <button type="button" className="!border-[#82433f] !bg-[#321a18] !text-[#ffaaa3] hover:!border-[#ff766e] hover:!bg-[#46211e]"
+                    disabled={busy} onClick={() => deleteSession(plan)}>Sterge</button>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
       )}
+      {completionSession && <WorkoutCompletionDialog key={completionSession.id} session={completionSession}
+        onSave={saveCompletion} onCancel={() => setCompletionSession(null)} />}
     </div>
   );
 }
