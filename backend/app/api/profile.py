@@ -118,6 +118,7 @@ def summary(start: date, end: date, response: Response,
     nutrition = build_nutrition_report(db, user["uid"], start, end)
     logs = {log.id: log for log in active_completed_logs(db, user["uid"], start, end)}.values()
     sports = {}
+    training_days = {log.day for log in logs}
     for log in logs:
         name = log.snapshot["sport"]
         sports[name] = sports.get(name, 0) + 1
@@ -127,6 +128,7 @@ def summary(start: date, end: date, response: Response,
     return {
         "start": start, "end": end,
         "sessions": sum(sports.values()),
+        "training_days": len(training_days),
         "sports": [{"name": name, "sessions": count} for name, count in sorted(sports.items())],
         "logged_days": len(days), "entries": sum(day["entries"] for day in days),
         "calories": round(calories, 2),

@@ -209,7 +209,10 @@ function ProfileDashboard({ user }) {
                 editing={!data.profile || editing}
                 initialSetup={!data.profile}
                 permissions={permissions}
-                activitySummary={data.activity_summary}
+                activitySummary={data.activity_summary || {
+                  activity_level: recommendation.activity_level,
+                  eligible_sessions_7: recommendation.training_sessions_7,
+                }}
                 startEdit={() => setEditing(true)}
                 cancelEdit={cancelEdit}
                 change={change}

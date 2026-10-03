@@ -3,7 +3,7 @@ from sqlalchemy import select
 from app.models.tracking import SportType, ExerciseDefinition
 from app.services.activity_catalog import CATALOG
 
-ENERGY_FIELDS = ("sport_type_id", "activity_type", "duration_minutes", "intensity")
+ENERGY_FIELDS = ("sport_type_id", "activity_type")
 
 
 def validate_session(db, uid, values):

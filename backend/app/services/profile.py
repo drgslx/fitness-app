@@ -10,7 +10,7 @@ from app.services.training_activity import summarize_activity
 
 
 # Approximate total activity multipliers, including exercise AND daily movement.
-# Current completed-session frequency selects this assumption, not signup activity.
+# The fallback uses the recent training frequency; recorded energy is calculated separately.
 ACTIVITY_FACTORS = {"sedentary": 1.2, "light": 1.375, "moderate": 1.55,
                     "high": 1.725, "very_high": 1.9}
 FORMULA_VERSION = "mifflin-st-jeor-v1"
@@ -20,8 +20,19 @@ def age_on(birth_date, today):
     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
 
 
+def activity_level_for_sessions(sessions):
+    if sessions == 0:
+        return "sedentary"
+    if sessions <= 2:
+        return "light"
+    if sessions <= 4:
+        return "moderate"
+    if sessions <= 6:
+        return "high"
+    return "very_high"
+
+
 def profile_edit_permissions(profile, today):
-    """Use saved identity data for both API enforcement and the profile form."""
     creating = profile is None
     return {
         "sex": creating,
@@ -37,7 +48,7 @@ def latest_weight(db, uid, today):
                      .order_by(BodyWeight.day.desc()).limit(1))
 
 
-def estimate(profile, weight, today, activity_level_override=None):
+def estimate(profile, weight, today, maintenance_override=None, activity_level_override=None):
     result = {"available": False, "reason": "Completeaza profilul si adauga o greutate masurata.",
               "warnings": [], "options": []}
     if profile is None or weight is None:
@@ -57,7 +68,7 @@ def estimate(profile, weight, today, activity_level_override=None):
 
     rest = 10 * weight.weight_kg + 6.25 * profile.height_cm - 5 * age + (5 if profile.sex == "male" else -161)
     activity_level = activity_level_override or profile.activity_level
-    maintenance = rest * ACTIVITY_FACTORS[activity_level]
+    maintenance = maintenance_override if maintenance_override is not None else rest * ACTIVITY_FACTORS[activity_level]
     reached = profile.target_weight_kg is not None and (
         (profile.goal == "lose" and weight.weight_kg <= profile.target_weight_kg) or
         (profile.goal == "gain" and weight.weight_kg >= profile.target_weight_kg))
@@ -112,10 +123,17 @@ def recommendation(db, profile, today, report=None):
     from app.services.energy import energy_report
     report = report if report is not None else energy_report(db, profile, today) if profile else None
     activity = report["activity_summary"] if report else summarize_activity(profile, today, [])
+    maintenance = report["planning_maintenance_kcal"] if report else None
     result = estimate(profile, latest_weight(db, profile.user_id, today) if profile else None, today,
-                      activity_level_override=activity["activity_level"])
-    result["maintenance_source"] = "sessions"
+                      maintenance_override=maintenance,
+                      activity_level_override=report["week"]["activity_level"] if report else None)
+    result["maintenance_source"] = "activity_average" if maintenance is not None else "training_frequency"
     result["complete_days_7"] = report["week"]["complete_days"] if report else 0
+    result["training_days_7"] = report["week"]["training_days"] if report else 0
+    result["training_sessions_7"] = report["week"]["sessions"] if report else 0
+    result["activity_level"] = report["week"]["activity_level"] if report else "sedentary"
+    result["activity_start"] = report["week"]["start"] if report else None
+    result["activity_end"] = report["week"]["end"] if report else None
     result["energy_method"] = report["method"] if report else None
     return result
 

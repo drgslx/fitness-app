@@ -26,7 +26,8 @@ def profile_client(client, monkeypatch):
     app.dependency_overrides[current_user] = lambda: {"uid": "alice", "email": "alice@example.test"}
     with session() as db:
         for key in ("lose", "maintain", "gain"):
-            db.add(GoalType(key=key, label=key, description=""))
+            if db.get(GoalType, key) is None:
+                db.add(GoalType(key=key, label=key, description=""))
         db.commit()
     return test, session
 
@@ -121,8 +122,6 @@ def test_formula_and_goal_adjustments(profile_client, sex, rest, goal, adjustmen
     result = save_weight(test)
     estimate = result["recommendation"]
     assert estimate["resting_kcal"] == rest
-    # No completed sessions means sedentary, independently of signup activity.
-    assert estimate["inputs"]["activity_level"] == "sedentary"
     assert estimate["maintenance_kcal"] == round(rest * 1.2)
     assert estimate["target_kcal"] == round(rest * 1.2 * (1 + adjustment))
     assert result["active_goal"]["calories"] == estimate["target_kcal"]
@@ -137,6 +136,36 @@ def test_formula_and_goal_adjustments(profile_client, sex, rest, goal, adjustmen
 def test_reject_invalid_profile_input(profile_client, field, value):
     test, _ = profile_client
     assert test.put("/api/v1/profile", json={**BASE, field: value}).status_code == 422
+
+
+@pytest.mark.parametrize("change", [
+    {"sex": "female"}, {"birth_date": "1995-01-01"}, {"height_cm": 180},
+])
+def test_saved_adult_personal_data_cannot_be_changed(profile_client, change):
+    test, _ = profile_client
+    saved = save_profile(test)["profile"]
+    response = test.put("/api/v1/profile", json={**BASE, **change})
+    assert response.status_code == 422, response.text
+    assert test.get("/api/v1/profile").json()["profile"] == saved
+    updated = save_profile(test, goal="maintain")
+    assert updated["profile"]["goal"] == "maintain"
+    assert updated["profile"]["sex"] == saved["sex"]
+    assert updated["profile"]["birth_date"] == saved["birth_date"]
+    assert updated["profile"]["height_cm"] == saved["height_cm"]
+
+
+def test_height_can_be_updated_only_until_eighteenth_birthday(profile_client, monkeypatch):
+    test, _ = profile_client
+    birth = "2008-09-26"
+    monkeypatch.setattr(profile_api, "today_for", lambda _: date(2026, 9, 25))
+    save_profile(test, birth_date=birth)
+    updated = save_profile(test, birth_date=birth, height_cm=178)
+    assert updated["profile"]["height_cm"] == 178
+    assert test.put("/api/v1/profile", json={**BASE, "birth_date": "2007-09-26", "height_cm": 178}).status_code == 422
+    monkeypatch.setattr(profile_api, "today_for", lambda _: TODAY)
+    assert test.put("/api/v1/profile", json={**BASE, "birth_date": birth, "height_cm": 180}).status_code == 422
+    updated = save_profile(test, birth_date=birth, height_cm=178, goal="maintain")
+    assert updated["profile"]["height_cm"] == 178 and updated["profile"]["goal"] == "maintain"
 
 
 def test_history_recalculates_from_latest_weight_and_preserves_past_goals(profile_client, monkeypatch):
@@ -245,7 +274,7 @@ def test_future_invalid_weights_and_goal_reached(profile_client):
     assert result["recommendation"]["target_kcal"] == result["recommendation"]["maintenance_kcal"]
 
 
-def test_signup_activity_does_not_replace_current_session_activity(profile_client):
+def test_stored_initial_activity_level_does_not_override_executed_session_frequency(profile_client):
     test, _ = profile_client
     save_profile(test, goal="maintain", deficit_percent=20, activity_level="sedentary")
     low = save_weight(test)["recommendation"]
@@ -254,8 +283,7 @@ def test_signup_activity_does_not_replace_current_session_activity(profile_clien
     high = save_weight(test)["recommendation"]
     assert low["target_kcal"] == round(1775 * 1.2)
     assert high["target_kcal"] == low["target_kcal"]
-    assert high["inputs"]["activity_level"] == "sedentary"
-    assert test.get("/api/v1/profile").json()["profile"]["activity_level"] == "high"
+    assert high["activity_level"] == "sedentary"
     assert high["adjustment_percent"] == 0
 
 

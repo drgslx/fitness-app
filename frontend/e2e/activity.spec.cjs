@@ -25,7 +25,7 @@ const types = [
   },
 ];
 
-async function mock(page) {
+async function mock(page, initialPlans = []) {
   // Mock Firebase auth module for E2E tests.
   await page.route(
     /\/src\/auth\.jsx(?:\?.*)?$/,
@@ -57,7 +57,7 @@ async function mock(page) {
   const requests = [];
 
   let observation = null;
-  let plans = [];
+  let plans = initialPlans;
   let nextSessionId = 201;
 
   const makeEnergy = () => {
@@ -165,7 +165,7 @@ async function mock(page) {
       };
     } else if (path === "/sport-types") {
       json = [sport];
-    } else if (path === `/sport-types/${sport.id}/exercises`) {
+    } else if (path.endsWith("/exercises")) {
       json = [];
     } else if (path === "/workout-templates") {
       json = [];
@@ -178,19 +178,22 @@ async function mock(page) {
         });
       }
 
-      json = req.method() === "GET"
-        ? plans.filter(plan => plan.day >= url.searchParams.get("start") && plan.day <= url.searchParams.get("end"))
-        : plans.at(-1);
+      json =
+        req.method() === "GET"
+          ? plans.filter(plan => plan.day >= url.searchParams.get("start") && plan.day <= url.searchParams.get("end")).map((plan) => ({ ...plan,
+              has_completion: Boolean(plan.completed),
+              completed: Boolean(plan.completed) && plan.day <= today,
+              can_complete: plan.day <= today,
+            }))
+          : plans.at(-1);
     } else if (/^\/workouts\/\d+\/completion$/.test(path)) {
-      const plan = plans.find(plan => plan.id === Number(path.split("/")[2]));
-      if (!plan) return route.fulfill({ status: 404, json: { detail: "Sesiune inexistenta" } });
-      plan.completed = req.method() === "PUT";
-      json = plan;
-    } else if (/^\/workouts\/\d+$/.test(path) && req.method() === "DELETE") {
-      const index = plans.findIndex(plan => plan.id === Number(path.split("/")[2]));
-      if (index < 0) return route.fulfill({ status: 404, json: { detail: "Sesiune inexistenta" } });
-      plans.splice(index, 1);
-      return route.fulfill({ status: 204 });
+      const plan = plans.find((item) => item.id === Number(path.split("/")[2]));
+      if (req.method() === "DELETE") {
+        Object.assign(plan, { completed: false, duration_minutes: null, intensity: null });
+        return route.fulfill({ status: 204 });
+      }
+      Object.assign(plan, req.postDataJSON(), { completed: true });
+      json = { id: plan.id, workout_id: plan.id, snapshot: { ...plan } };
     } else if (path === "/profile") {
       json = {
         today,
@@ -376,17 +379,17 @@ test(
 );
 
 test(
-  "activity flow uses the existing session endpoint and one duration",
+  "duration and intensity are collected only on completion and can be corrected",
   async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     const requests = await mock(page);
 
     await page.goto(
       "/workouts/sessions/new?activity=strength",
     );
 
-    await expect(
-      page.getByLabel("Durata totala (minute)"),
-    ).toHaveValue("60");
+    await expect(page.getByLabel("Durata totala (minute)")).toHaveCount(0);
+    await expect(page.getByLabel("Intensitate medie")).toHaveCount(0);
     await page.getByLabel("Data", { exact: true }).fill(today);
 
     await page
@@ -395,25 +398,14 @@ test(
       })
       .selectOption("Sala");
 
-    await expect(
-      page.getByLabel("Durata totala (minute)"),
-    ).toHaveValue("65");
-
     await page
       .getByLabel(
         "Pasi ai sesiunii inclusi in total",
       )
       .fill("0");
 
-    await expect(
-      page.getByText(
-        "~210 kcal active peste repaus — estimare",
-      ),
-    ).toBeVisible();
-
     const createdResponse = page.waitForResponse(response =>
-      new URL(response.url()).pathname === "/api/v1/workouts" && response.request().method() === "POST",
-    );
+      new URL(response.url()).pathname === "/api/v1/workouts" && response.request().method() === "POST");
     await page
       .getByRole("button", {
         name: "Salveaza sesiunea",
@@ -435,21 +427,85 @@ test(
 
     expect(saved).toBeDefined();
 
+    const accordion = page.locator("details[name='week-sessions']");
+    await expect(accordion).toHaveCount(1);
+    await expect(page.getByText("Sesiune fara exercitii individuale.", { exact: true })).toBeHidden();
+    await accordion.locator("summary").click();
+    await expect(page.getByText("Sesiune fara exercitii individuale.", { exact: true })).toBeVisible();
+    await accordion.locator("summary").click();
+    await expect(page.getByText("Sesiune fara exercitii individuale.", { exact: true })).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
     expect(saved.body).toMatchObject({
       sport_type_id: sport.id,
       day: today,
       activity_type: "strength",
-      duration_minutes: 65,
       steps_included: 0,
       exercises: [],
     });
-    await session.locator("summary").click();
-    await session.getByRole("button", { name: "Executat", exact: true }).click();
-    await expect(session.getByText("Executat", { exact: true })).toBeVisible();
-    expect(requests.find(request => request.path === `/workouts/${created.id}/completion`)).toMatchObject({ method: "PUT" });
-    page.once("dialog", dialog => dialog.accept());
-    await session.getByRole("button", { name: "Sterge", exact: true }).click();
-    await expect(session).toHaveCount(0);
-    expect(requests.find(request => request.path === `/workouts/${created.id}`)).toMatchObject({ method: "DELETE" });
+    expect(saved.body).not.toHaveProperty("duration_minutes");
+    expect(saved.body).not.toHaveProperty("intensity");
+
+    await page.getByRole("button", { name: "Executat", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    expect(await dialog.evaluate((element) => element.getBoundingClientRect().width <= window.innerWidth)).toBe(true);
+    await expect(dialog.getByLabel("Cate minute a durat antrenamentul?")).toHaveValue("");
+    await dialog.getByRole("button", { name: "Anuleaza", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(requests.filter((request) => request.path.endsWith("/completion"))).toHaveLength(0);
+    await expect(page.getByText("Planificat", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Executat", exact: true }).click();
+    // Required fields keep the session planned until both answers are provided.
+    await dialog.getByRole("button", { name: "Confirma executarea" }).click();
+    await expect(dialog).toBeVisible();
+    expect(requests.filter((request) => request.path.endsWith("/completion"))).toHaveLength(0);
+    await dialog.getByLabel("Cate minute a durat antrenamentul?").fill("45");
+    await dialog.getByLabel("Cum a fost sesiunea?").selectOption("high");
+    await dialog.getByRole("button", { name: "Confirma executarea" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByText("1 / 1 executate", { exact: true })).toBeVisible();
+    const completed = requests.find((request) => request.path.endsWith("/completion"));
+    expect(completed.body).toEqual({ duration_minutes: 45, intensity: "high" });
+    await expect(page.getByText("45 min · Ridicata", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Durata si intensitate" }).click();
+    await expect(dialog.getByLabel("Cate minute a durat antrenamentul?")).toHaveValue("45");
+    await dialog.getByLabel("Cate minute a durat antrenamentul?").fill("60");
+    await dialog.getByLabel("Cum a fost sesiunea?").selectOption("very_high");
+    await dialog.getByRole("button", { name: "Salveaza detaliile" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByText("60 min · Foarte ridicata", { exact: true })).toBeVisible();
+    await expect(page.getByText("1 / 1 executate", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Anuleaza", exact: true }).click();
+    await expect(page.getByText("Planificat", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Executat", exact: true }).click();
+    await expect(dialog.getByLabel("Cate minute a durat antrenamentul?")).toHaveValue("");
+    await expect(dialog.getByLabel("Cum a fost sesiunea?")).toHaveValue("");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
   },
 );
+
+test("future execution is disabled and legacy future completions can be cancelled", async ({ page }) => {
+  const requests = await mock(page, [
+    { id: 1, day: today, title: "Azi", sport: "Sala", exercises: [], completed: false },
+    { id: 2, day: "2026-09-27", title: "Maine", sport: "Box", exercises: [], completed: false },
+    { id: 3, day: "2026-09-27", title: "Executare veche", sport: "Box", exercises: [], completed: true,
+      duration_minutes: 60, intensity: "high" },
+  ]);
+  await page.goto(`/workouts/sessions?day=${today}`);
+  const current = page.getByRole("article", { name: `Sesiune Azi din ${today}`, exact: true });
+  const future = page.getByRole("article", { name: "Sesiune Maine din 2026-09-27", exact: true });
+  await expect(current.getByRole("button", { name: "Executat", exact: true })).toBeEnabled();
+  await expect(future.getByRole("button", { name: "Executat", exact: true })).toBeDisabled();
+  await expect(future.getByText("Planificat", { exact: true })).toBeVisible();
+  await expect(future.getByText(/Executarea va fi disponibila din 2026-09-27/)).toBeVisible();
+  const old = page.getByRole("article", { name: "Sesiune Executare veche din 2026-09-27", exact: true });
+  await expect(old.getByText("Planificat", { exact: true })).toBeVisible();
+  await old.getByRole("button", { name: "Anuleaza", exact: true }).click();
+  await expect(old.getByRole("button", { name: "Executat", exact: true })).toBeDisabled();
+  expect(requests.filter((request) => request.method === "PUT" && request.path.endsWith("/completion"))).toHaveLength(0);
+});

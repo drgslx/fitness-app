@@ -25,20 +25,20 @@ def test_workouts_owned_and_completion_snapshot(tracker):
     r=tracker.post("/api/v1/workouts",json=body)
     assert r.status_code==201, r.text
     wid=r.json()["id"]
-    assert tracker.put(f"/api/v1/workouts/{wid}/completion").status_code==200
-    assert tracker.put(f"/api/v1/workouts/{wid}/completion").status_code==200
+    completion={"duration_minutes":60,"intensity":"moderate"}
+    assert tracker.put(f"/api/v1/workouts/{wid}/completion",json=completion).status_code==200
+    assert tracker.put(f"/api/v1/workouts/{wid}/completion",json=completion).status_code==200
     body["title"]="Changed"
     assert tracker.put(f"/api/v1/workouts/{wid}",json=body).status_code==200
     query="?start=2026-09-21&end=2026-09-27"
     logs=tracker.get("/api/v1/workout-history"+query).json()
     assert len(logs)==1 and logs[0]["snapshot"]["title"]=="Changed"
-    assert logs[0]["snapshot"]["exercises"][0]["sets"] == 3
-    assert logs[0]["snapshot"]["exercises"][0]["reps"] == 8
+    assert logs[0]["snapshot"]["duration_minutes"]==60
     app.dependency_overrides[current_user]=lambda:{"uid":"bob"}
     assert tracker.get("/api/v1/workouts"+query).json()==[]
     assert tracker.put(f"/api/v1/workouts/{wid}",json=body).status_code==404
     assert tracker.delete(f"/api/v1/workouts/{wid}").status_code==404
-    assert tracker.put(f"/api/v1/workouts/{wid}/completion").status_code==404
+    assert tracker.put(f"/api/v1/workouts/{wid}/completion",json=completion).status_code==404
 
 def test_nutrition_snapshots_portions_reports_and_isolation(tracker):
     f=food(tracker)

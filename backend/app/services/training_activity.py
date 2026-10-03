@@ -23,16 +23,15 @@ def active_completed_workouts(db, uid, start, end):
 
 
 def summarize_activity(profile, today, plans):
+    from app.services.profile import activity_level_for_sessions
     start = today - timedelta(days=6)
     window = [plan for plan in plans if start <= plan.day <= today]
-    count = sum((plan.duration_minutes or 0) > 15 for plan in window)
+    count = len(window)
     missing = sum(plan.duration_minutes is None for plan in window)
-    level = ("light" if count <= 2 else "moderate" if count <= 4 else
-             "high" if count <= 6 else "very_high") if count else (
-                 "sedentary")
+    level = activity_level_for_sessions(count)
     return {"source": "sessions", "activity_level": level,
             "eligible_sessions_7": count, "start": start.isoformat(), "end": today.isoformat(),
-            "min_duration_minutes": 15, "missing_duration_sessions": missing}
+            "missing_duration_sessions": missing}
 
 
 def activity_summary(db, profile, today):

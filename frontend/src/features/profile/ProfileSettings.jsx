@@ -1,7 +1,7 @@
 import React from "react";
 import Button from "../../components/ui/Button";
-import { activityOptions, panel } from "./constants";
-import PersonalProfileFields from "./PersonalProfileFields";
+import { panel } from "./constants";
+import PersonalProfileFields, { SavedField } from "./PersonalProfileFields";
 export default function ProfileSettings({
   form,
   today,
@@ -17,9 +17,10 @@ export default function ProfileSettings({
 }) {
   return (
     <section className={panel} aria-labelledby="profile-settings-title">
-      <h2 id="profile-settings-title" className="text-xl">
-        Date personale si obiectiv
-      </h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 id="profile-settings-title" className="text-xl">Date personale si obiectiv</h2>
+        {!initialSetup && !editing && <Button type="button" variant="secondary" disabled={busy} onClick={startEdit}>Editeaza</Button>}
+      </div>
       {initialSetup ? (
         <p className="text-sm text-muted">
           Completeaza profilul pentru prima data. Sexul, data nasterii si nivelul ales se pastreaza
@@ -31,30 +32,8 @@ export default function ProfileSettings({
           Poti edita obiectivul{permissions.height_cm ? " si inaltimea, pana la 18 ani" : ""}.
         </p>
       )}
-      {activitySummary && (
-        <div className="mb-3 space-y-1" aria-label="Activitatea din ultimele 7 zile">
-          <h3 className="text-lg">Nivel de activitate curent</h3>
-          <p className="text-xl font-bold text-accent">
-            Nivel stabilit automat
-            {": "}{activityOptions.find(([value]) => value === activitySummary.activity_level)?.[1]}
-          </p>
-          <p className="text-xs text-muted">
-            {activitySummary.eligible_sessions_7} antrenamente finalizate de peste{" "}
-            {activitySummary.min_duration_minutes} minute in ultimele 7 zile
-            {" ("}{activitySummary.start}{" – "}{activitySummary.end}{")."}
-          </p>
-          <p className="text-xs text-muted">
-            Nivelul se actualizeaza automat dupa antrenamentele finalizate din acest
-            interval. Fara antrenamente de peste 15 minute, nivelul este Sedentar.
-          </p>
-          {activitySummary.missing_duration_sessions > 0 && <p className="text-xs text-amber-200">
-            {activitySummary.missing_duration_sessions} antrenamente fara durata nu intra
-            in acest calcul. Completeaza durata lor in lista sesiunilor.
-          </p>}
-        </div>
-      )}
       <form onSubmit={saveProfile}>
-        <fieldset disabled={busy || !editing} className="border-0 p-0">
+        <fieldset disabled={busy} className="border-0 p-0">
           <PersonalProfileFields
             form={form}
             today={today}
@@ -62,9 +41,10 @@ export default function ProfileSettings({
             permissions={permissions}
             initialSetup={initialSetup}
             activitySummary={activitySummary}
+            editing={editing}
           />
           <div className="grid gap-3 sm:grid-cols-2">
-            {form.goal === "lose" && (
+            {editing && form.goal === "lose" && (
               <label>
                 Deficit caloric
                 <select
@@ -79,7 +59,7 @@ export default function ProfileSettings({
                 </select>
               </label>
             )}
-            {form.goal === "gain" && (
+            {editing && form.goal === "gain" && (
               <label>
                 Surplus caloric
                 <select
@@ -95,7 +75,7 @@ export default function ProfileSettings({
                 </select>
               </label>
             )}
-            {form.goal !== "maintain" && (
+            {editing && form.goal !== "maintain" && (
               <label>
                 Greutate tinta (kg, optional)
                 <input
@@ -108,12 +88,17 @@ export default function ProfileSettings({
                 />
               </label>
             )}
+            {!editing && form.goal !== "maintain" && <>
+              <SavedField label={form.goal === "lose" ? "Deficit caloric" : "Surplus caloric"}
+                value={`${form.goal === "lose" ? form.deficit_percent : form.surplus_percent}%`} />
+              {form.target_weight_kg !== "" && <SavedField label="Greutate tinta" value={`${form.target_weight_kg} kg`} />}
+            </>}
           </div>
           <p className="text-xs text-muted">
-            Nivelul curent se stabileste dupa antrenamentele finalizate de peste
-            15 minute in ultimele 7 zile. Estimarea nu masoara direct necesarul caloric.
+            Nivelul curent foloseste toate sesiunile executate in ultimele 7 zile.
+            Consumul se estimeaza separat din sport, durata si intensitate.
           </p>
-          {form.goal === "gain" && (
+          {editing && form.goal === "gain" && (
             <p className="text-xs text-muted">
               Pentru culturism, literatura descrie aproximativ 10–20% la
               incepatori/intermediari si o abordare mai conservatoare la
@@ -127,6 +112,7 @@ export default function ProfileSettings({
               </a>
             </p>
           )}
+          {initialSetup && <>
           <p className="text-sm text-muted">Setari pentru calculul si sincronizarea caloriilor</p>
           <label className="flex items-start gap-2">
             <input
@@ -148,6 +134,7 @@ export default function ProfileSettings({
             />
             Sincronizeaza automat tinta calorica in jurnal
           </label>
+          </>}
           <p className="text-xs text-muted">
             La salvarea profilului sau greutatii, tinta se aplica de azi.
             Corectiile din aceeasi zi actualizeaza tinta zilei. Zilele trecute
@@ -155,15 +142,10 @@ export default function ProfileSettings({
           </p>
           {editing && (
             <Button type="submit">
-              {busy ? "Se salveaza..." : "Salveaza profilul"}
+              {busy ? "Se salveaza..." : initialSetup ? "Salveaza profilul" : "Salveaza obiectivul"}
             </Button>
           )}
         </fieldset>
-        {!editing && (
-          <Button type="button" disabled={busy} onClick={startEdit}>
-            Editeaza profilul
-          </Button>
-        )}
         {editing && !initialSetup && (
           <Button type="button" variant="secondary" className="mt-2" disabled={busy} onClick={cancelEdit}>
             Anuleaza

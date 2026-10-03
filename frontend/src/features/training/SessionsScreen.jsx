@@ -1,3 +1,4 @@
+import WorkoutCompletionDialog from "./components/workouts/WorkoutCompletionDialog";
 import SessionsList from "./components/SessionsList";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -52,6 +53,7 @@ export default function SessionsScreen() {
   const [plans, setPlans] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [completionSession, setCompletionSession] = useState(null);
 
   const range = useMemo(() => weekRange(day), [day]);
 
@@ -98,6 +100,18 @@ export default function SessionsScreen() {
     }
 
     action(() => send(`/workouts/${plan.id}`, "DELETE"));
+  }
+
+  async function saveCompletion(values) {
+    setBusy(true);
+    setError("");
+    try {
+      await send(`/workouts/${completionSession.id}/completion`, "PUT", values);
+      await load();
+      setCompletionSession(null);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -184,17 +198,15 @@ export default function SessionsScreen() {
             busy={busy}
             onEdit={editSession}
             onDelete={deleteSession}
-            onToggle={(plan) =>
-              action(() =>
-                send(
-                  `/workouts/${plan.id}/completion`,
-                  plan.completed ? "DELETE" : "PUT",
-                ),
-              )
-            }
+            onCompletion={setCompletionSession}
+            onToggle={(plan) => plan.completed || plan.has_completion
+              ? action(() => send(`/workouts/${plan.id}/completion`, "DELETE"))
+              : setCompletionSession(plan)}
           />
         </section>
       )}
+      {completionSession && <WorkoutCompletionDialog key={completionSession.id} session={completionSession}
+        onSave={saveCompletion} onCancel={() => setCompletionSession(null)} />}
     </div>
   );
 }

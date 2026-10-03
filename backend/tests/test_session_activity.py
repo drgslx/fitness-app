@@ -37,7 +37,7 @@ def test_session_count_buckets_use_current_plans_without_rewriting_signup_activi
     assert result["activity_summary"] == {
         "source": "sessions", "activity_level": level,
         "eligible_sessions_7": count, "start": str(TODAY - timedelta(days=6)),
-        "end": str(TODAY), "min_duration_minutes": 15, "missing_duration_sessions": 0,
+        "end": str(TODAY), "missing_duration_sessions": 0,
     }
     assert result["profile"]["activity_level"] == "moderate"
     assert result["edit_permissions"]["activity_level"] is False
@@ -45,7 +45,7 @@ def test_session_count_buckets_use_current_plans_without_rewriting_signup_activi
     assert rec["inputs"]["activity_level"] == level
     assert rec["activity_factor"] == factor
     assert rec["maintenance_kcal"] == round(1775 * factor)
-    assert rec["maintenance_source"] == "sessions"
+    assert rec["maintenance_source"] == "training_frequency"
 
 
 def test_eligibility_window_duration_completion_ownership_and_active_sports(energy_client):
@@ -71,8 +71,8 @@ def test_eligibility_window_duration_completion_ownership_and_active_sports(ener
         insert_session(db, sport_id=foreign.id)
         db.commit()
     result = test.get("/api/v1/profile").json()
-    assert result["activity_summary"]["eligible_sessions_7"] == 2
-    assert result["activity_summary"]["activity_level"] == "light"
+    assert result["activity_summary"]["eligible_sessions_7"] == 6
+    assert result["activity_summary"]["activity_level"] == "high"
     assert result["activity_summary"]["missing_duration_sessions"] == 1
 
 
@@ -81,8 +81,8 @@ def test_signup_activity_stays_locked_without_with_and_after_eligible_sessions(e
     first = test.get("/api/v1/profile").json()
     assert first["activity_summary"]["activity_level"] == "sedentary"
     assert test.put("/api/v1/profile", json={**BASE, "activity_level": "high"}).status_code == 422
-    short = workout(test, duration_minutes=15)
-    complete(test, short)
+    short = workout(test)
+    complete(test, short, duration_minutes=15)
     save_profile(test, goal="maintain")
     plan = workout(test)
     complete(test, plan)
@@ -95,7 +95,9 @@ def test_signup_activity_stays_locked_without_with_and_after_eligible_sessions(e
     assert allowed["recommendation"]["inputs"]["activity_level"] == "light"
     assert test.delete(f'/api/v1/workouts/{plan["id"]}/completion').status_code == 204
     result = test.get("/api/v1/profile").json()
-    assert result["activity_summary"]["activity_level"] == "sedentary"
+    assert result["activity_summary"]["activity_level"] == "light"
+    assert test.delete(f'/api/v1/workouts/{short["id"]}/completion').status_code == 204
+    assert test.get("/api/v1/profile").json()["activity_summary"]["activity_level"] == "sedentary"
     assert result["edit_permissions"]["activity_level"] is False
     assert test.put("/api/v1/profile", json={**BASE, "activity_level": "sedentary"}).status_code == 422
 
@@ -111,14 +113,16 @@ def test_session_mutations_recalculate_automatic_target_and_return_to_sedentary(
     for plan in plans[1:]:
         complete(test, plan)
     assert test.get("/api/v1/profile").json()["active_goal"]["calories"] == round(1775 * 1.55)
-    body = {key: plans[0][key] for key in (
-        "day", "title", "sport", "exercises", "activity_type", "intensity", "steps_included")}
-    edited = test.put(f'/api/v1/workouts/{plans[0]["id"]}', json={**body, "duration_minutes": 15})
+    edited = test.put(f'/api/v1/workouts/{plans[0]["id"]}/completion',
+                      json={"duration_minutes": 15, "intensity": "high"})
     assert edited.status_code == 200, edited.text
-    assert test.get("/api/v1/profile").json()["active_goal"]["calories"] == one["active_goal"]["calories"]
+    # Shortening one session changes its energy, not the number of executed sessions.
+    assert test.get("/api/v1/profile").json()["active_goal"]["calories"] == round(1775 * 1.55)
     assert test.delete(f'/api/v1/workouts/{plans[1]["id"]}/completion').status_code == 204
-    assert test.get("/api/v1/profile").json()["activity_summary"]["eligible_sessions_7"] == 1
+    assert test.get("/api/v1/profile").json()["activity_summary"]["eligible_sessions_7"] == 2
     assert test.delete(f'/api/v1/workouts/{plans[2]["id"]}').status_code == 204
+    assert test.get("/api/v1/profile").json()["active_goal"]["calories"] == one["active_goal"]["calories"]
+    assert test.delete(f'/api/v1/workouts/{plans[0]["id"]}/completion').status_code == 204
     assert test.get("/api/v1/profile").json()["active_goal"]["calories"] == initial
     sport = test.post("/api/v1/sport-types", json={"name": "Cycling", "activity_type": "cycling"}).json()
     plan = workout(test, sport_type_id=sport["id"])
@@ -130,18 +134,18 @@ def test_session_mutations_recalculate_automatic_target_and_return_to_sedentary(
     assert archived["active_goal"]["calories"] == initial
 
 
-def test_complete_day_average_does_not_override_sessions_and_short_sessions_keep_daily_calories(energy_client):
+def test_complete_day_average_includes_short_and_long_sessions(energy_client):
     test, _ = energy_client
-    short = workout(test, duration_minutes=15)
-    complete(test, short)
+    short = workout(test)
+    complete(test, short, duration_minutes=15)
     long = workout(test)
     complete(test, long)
     for offset in range(4):
         report = steps(test, TODAY - timedelta(days=offset))
     result = test.get("/api/v1/profile").json()
-    assert result["activity_summary"]["eligible_sessions_7"] == 1
-    assert result["recommendation"]["maintenance_source"] == "sessions"
-    assert result["recommendation"]["maintenance_kcal"] == round(1775 * 1.375)
+    assert result["activity_summary"]["eligible_sessions_7"] == 2
+    assert result["recommendation"]["maintenance_source"] == "activity_average"
+    assert result["recommendation"]["maintenance_kcal"] == report["planning_maintenance_kcal"]
     assert report["planning_maintenance_kcal"] is not None
     assert report["today"]["workout_net_kcal"] == 205 + round(205 / 4)
 
@@ -156,7 +160,7 @@ def test_rollover_gets_update_recommendation_without_writing_goal_history(energy
     monkeypatch.setattr(profile_api, "today_for", lambda _: TODAY + timedelta(days=1))
     after = test.get("/api/v1/profile").json()
     assert after["activity_summary"]["eligible_sessions_7"] == 0
-    assert after["recommendation"]["maintenance_source"] == "sessions"
+    assert after["recommendation"]["maintenance_source"] == "training_frequency"
     assert after["recommendation"]["maintenance_kcal"] == round(1775 * 1.2)
     assert after["active_goal"] == before["active_goal"]
     with session() as db:

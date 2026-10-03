@@ -61,7 +61,7 @@ class Workout(Base):
     sport_type_id: Mapped[int | None] = mapped_column(ForeignKey("sport_types.id"), nullable=True)
     activity_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
     duration_minutes: Mapped[float | None] = mapped_column(Float, nullable=True)
-    intensity: Mapped[str] = mapped_column(String(20), default="moderate", server_default="moderate")
+    intensity: Mapped[str | None] = mapped_column(String(20), nullable=True)
     steps_included: Mapped[int | None] = mapped_column(Integer, nullable=True)
     exercise_rows: Mapped[list["WorkoutExercise"]] = relationship(
         cascade="all, delete-orphan", order_by="WorkoutExercise.position", lazy="selectin")
@@ -112,8 +112,6 @@ class WorkoutTemplate(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     sport_type_id: Mapped[int | None] = mapped_column(ForeignKey("sport_types.id"), nullable=True)
     activity_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    duration_minutes: Mapped[float | None] = mapped_column(Float, nullable=True)
-    intensity: Mapped[str] = mapped_column(String(20), default="moderate", server_default="moderate")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

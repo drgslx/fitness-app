@@ -97,15 +97,8 @@ export default function ProfileRecommendation({
       ) : (
         <p>{recommendation.reason}</p>
       )}
-      <p className="text-sm text-accent">
-        Baza: nivelul stabilit dupa antrenamentele din ultimele 7 zile
-      </p>
-      <p className="text-xs text-muted">
-        Estimare Mifflin–St Jeor. Mentinerea foloseste energia in repaus inmultita
-        cu factorul nivelului de activitate curent. Nivelul se stabileste din
-        antrenamentele finalizate de peste 15 minute din ultimele 7 zile; fara
-        astfel de antrenamente este Sedentar. Nevoile individuale pot diferi.
-      </p>
+      <p className="text-sm text-accent">{recommendation.maintenance_source === "activity_average" ? "Baza: media activitatii inregistrate" : "Baza: frecventa antrenamentelor din ultimele 7 zile"}</p>
+      <p className="text-xs text-muted">Estimare Mifflin–St Jeor. Dupa minimum 4 zile complete din ultimele 7, mentinerea foloseste media activitatii declarate, cu toate sesiunile fiecarei zile. Pana atunci folosim factorul orientativ corespunzator numarului de sesiuni executate. Nevoile individuale pot diferi.</p>
       <p className="text-xs text-muted">
         {data.profile?.auto_calories
           ? "Sincronizare automata activata."

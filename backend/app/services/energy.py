@@ -1,12 +1,12 @@
 """Versioned, read-through energy estimates. No duplicated calorie totals in DB."""
 from datetime import timedelta
-from sqlalchemy import select, or_, and_
+from sqlalchemy import select
 from app.models.activity import DailyActivity
 from app.models.profile import BodyWeight
-from app.services.activity_catalog import CATALOG, net_calories
+from app.services.activity_catalog import CATALOG, INTENSITIES, net_calories
 from app.services.training_activity import active_completed_workouts, summarize_activity
 
-VERSION = "daily-energy-v1"
+VERSION = "daily-energy-v3"
 # Explicit modelling assumptions, not measurements or a validated adaptive TDEE.
 NON_WALKING_FRACTION = .10
 THERMIC_FRACTION = .10
@@ -15,7 +15,7 @@ WALK_NET_KCAL_KG_KM = .5
 
 
 def energy_report(db, profile, today, days=28):
-    from app.services.profile import estimate
+    from app.services.profile import estimate, activity_level_for_sessions
     start = today - timedelta(days=days - 1)
     uid = profile.user_id
     movements = {r.day: r for r in db.scalars(select(DailyActivity).where(
@@ -38,12 +38,13 @@ def energy_report(db, profile, today, days=28):
         entries = []
         total_minutes = sum(p.duration_minutes or 0 for p in sessions)
         for plan in sessions:
-            available = bool(base["available"] and plan.activity_type in CATALOG and plan.duration_minutes)
+            available = bool(base["available"] and plan.activity_type in CATALOG
+                             and plan.duration_minutes and plan.intensity in INTENSITIES)
             kcal = net_calories(plan.activity_type, plan.intensity, plan.duration_minutes, weight.weight_kg) if available else None
             entries.append(dict(id=plan.id, title=plan.title, sport=plan.sport, activity_type=plan.activity_type,
                 duration_minutes=plan.duration_minutes, intensity=plan.intensity,
                 steps_included=plan.steps_included, net_kcal=round(kcal) if kcal is not None else None))
-            if not available: issues.append("O sesiune nu are tip energetic, durata sau greutate eligibila.")
+            if not available: issues.append("O sesiune nu are tip energetic, durata, intensitate sau greutate eligibila.")
         if total_minutes > 960: issues.append("Durata cumulata depaseste 16 ore; verifica sesiunile duplicate.")
         steps = observation.steps if observation else None
         walking_steps = steps
@@ -81,6 +82,8 @@ def energy_report(db, profile, today, days=28):
             estimated_kcal=daily_total, issues=list(dict.fromkeys(issues)),
             stale_weight=bool(weight and (day - weight.day).days >= 30)))
     week = output[-7:]
+    training_days = sum(bool(day["sessions"]) for day in week)
+    training_sessions = sum(len(day["sessions"]) for day in week)
     completed = [d for d in week if d["complete"]]
     average = round(sum(d["estimated_kcal"] for d in completed) / len(completed)) if completed else None
     all_complete = sum(d["complete"] for d in output)
@@ -88,9 +91,10 @@ def energy_report(db, profile, today, days=28):
     return dict(method=VERSION, today=output[-1], days=output,
         activity_summary=summarize_activity(profile, today, plans),
         week=dict(start=week[0]["day"], end=week[-1]["day"], complete_days=len(completed),
+                  training_days=training_days, activity_level=activity_level_for_sessions(training_sessions),
                   average_maintenance_kcal=average,
                   average_steps=round(sum(d["steps"] for d in completed) / len(completed)) if completed else None,
-                  sessions=sum(len(d["sessions"]) for d in week),
+                  sessions=training_sessions,
                   training_minutes=sum(d["training_minutes"] for d in week)),
         planning_maintenance_kcal=average if usable else None,
         coverage=dict(level="history" if all_complete >= 14 and usable else "improving" if all_complete else "basic",
