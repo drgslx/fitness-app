@@ -125,11 +125,11 @@ export default function LoginScreen() {
                   </label>
                   <PersonalProfileFields form={form} change={change} today={localDate()} registration />
                   <p className="text-xs text-muted">
-                    Sexul si data nasterii se pastreaza dupa crearea profilului.
+                    Sexul, data nasterii si nivelul ales se pastreaza dupa crearea profilului.
                     Obiectivul poate fi editat ulterior, iar inaltimea doar pana la 18 ani.
-                    Nivelul de activitate poate fi editat cand nu ai antrenamente finalizate
-                    de peste 15 minute in ultimele 7 zile. Dupa inregistrarea lor, nivelul
-                    se stabileste automat dupa numarul de antrenamente.
+                    Nivelul de activitate curent se stabileste automat dupa antrenamentele
+                    finalizate de peste 15 minute din ultimele 7 zile. Fara astfel de
+                    antrenamente, nivelul curent este Sedentar.
                   </p>
                 </>
               )}

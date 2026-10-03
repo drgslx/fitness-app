@@ -38,7 +38,7 @@ test('quick add inherits diary context and refreshes actual totals',async({page}
  await expect(dialog).toHaveCount(0);
  await expect(page.locator('.metric').getByText('350.0 kcal',{exact:true})).toBeVisible();
  const writes=state.calls.filter(c=>c.path==='/diary'&&c.method==='POST');
- expect(writes).toHaveLength(1);expect(writes[0].body).toEqual({food_id:7,grams:175,meal:'Cina',day:'2026-09-29'});
+ expect(writes).toHaveLength(1);expect(writes[0].body).toEqual({food_id:food.id,grams:175,meal:'Cina',day:'2026-09-29'});
  await page.locator('tbody').getByRole('button',{name:'Branza test'}).click();
  await expect(page.getByRole('dialog').getByRole('columnheader',{name:/175 g/i})).toBeVisible();
  await expect(page.getByRole('dialog').getByText('350 kcal',{exact:true})).toBeVisible();

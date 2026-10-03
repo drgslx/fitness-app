@@ -55,13 +55,13 @@ def test_first_setup_persists_registration_data_and_locks_identity(profile_clien
     assert loaded["profile"]["goal"] == "maintain"
     assert loaded["edit_permissions"] == registered["edit_permissions"] == {
         "sex": False, "birth_date": False, "height_cm": False,
-        "activity_level": True, "goal": True,
+        "activity_level": False, "goal": True,
     }
 
 
 @pytest.mark.parametrize("field,value", [
     ("sex", "female"), ("birth_date", "2012-01-01"),
-    ("height_cm", 180),
+    ("height_cm", 180), ("activity_level", "high"),
 ])
 def test_saved_adult_profile_rejects_locked_changes_atomically(profile_client, field, value):
     test, _ = profile_client
@@ -121,8 +121,10 @@ def test_formula_and_goal_adjustments(profile_client, sex, rest, goal, adjustmen
     result = save_weight(test)
     estimate = result["recommendation"]
     assert estimate["resting_kcal"] == rest
-    assert estimate["maintenance_kcal"] == round(rest * 1.55)
-    assert estimate["target_kcal"] == round(rest * 1.55 * (1 + adjustment))
+    # No completed sessions means sedentary, independently of signup activity.
+    assert estimate["inputs"]["activity_level"] == "sedentary"
+    assert estimate["maintenance_kcal"] == round(rest * 1.2)
+    assert estimate["target_kcal"] == round(rest * 1.2 * (1 + adjustment))
     assert result["active_goal"]["calories"] == estimate["target_kcal"]
     assert result["active_goal"]["source"] == "profile"
     assert result["active_goal"]["goal_type"] == goal
@@ -243,7 +245,7 @@ def test_future_invalid_weights_and_goal_reached(profile_client):
     assert result["recommendation"]["target_kcal"] == result["recommendation"]["maintenance_kcal"]
 
 
-def test_registration_activity_level_sets_maintenance_even_when_stored_deficit_is_twenty(profile_client):
+def test_signup_activity_does_not_replace_current_session_activity(profile_client):
     test, _ = profile_client
     save_profile(test, goal="maintain", deficit_percent=20, activity_level="sedentary")
     low = save_weight(test)["recommendation"]
@@ -251,7 +253,9 @@ def test_registration_activity_level_sets_maintenance_even_when_stored_deficit_i
     save_profile(test, goal="maintain", deficit_percent=20, activity_level="high")
     high = save_weight(test)["recommendation"]
     assert low["target_kcal"] == round(1775 * 1.2)
-    assert high["target_kcal"] == round(1775 * 1.725)
+    assert high["target_kcal"] == low["target_kcal"]
+    assert high["inputs"]["activity_level"] == "sedentary"
+    assert test.get("/api/v1/profile").json()["profile"]["activity_level"] == "high"
     assert high["adjustment_percent"] == 0
 
 

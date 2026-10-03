@@ -30,13 +30,12 @@ export function profilePayload(form) {
 }
 
 // The API is authoritative. This fallback also supports older cached responses.
-export function profilePermissions(profile, today, activitySummary) {
-  const manualActivityAllowed = activitySummary?.source === "initial_fallback";
+export function profilePermissions(profile, today) {
   if (!profile)
     return { sex: true, birth_date: true, height_cm: true, activity_level: true, goal: true };
   const [year, month, day] = today.split("-").map(Number);
   const [birthYear, birthMonth, birthDay] = profile.birth_date.split("-").map(Number);
   const birthdayPending = month < birthMonth || (month === birthMonth && day < birthDay);
   const age = year - birthYear - Number(birthdayPending);
-  return { sex: false, birth_date: false, height_cm: age < 18, activity_level: manualActivityAllowed, goal: true };
+  return { sex: false, birth_date: false, height_cm: age < 18, activity_level: false, goal: true };
 }

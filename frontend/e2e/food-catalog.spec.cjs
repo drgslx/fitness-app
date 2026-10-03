@@ -6,6 +6,9 @@ async function setup(page){
  await page.route('**/api/v1/**',r=>{
   const u=new URL(r.request().url());calls.push(u.pathname+u.search);
   if(u.pathname.endsWith('/foods/search'))return r.fulfill({json:{items:[food],page:1,has_more:false,source:'local',message:''}});
+  if(u.pathname.endsWith('/profile'))return r.fulfill({json:{today:'2026-09-26',profile:null,weights:[],recommendation:{available:false,reason:'Completeaza profilul',warnings:[],options:[]},active_goal:null,weight_change_kg:null}});
+  if(u.pathname.endsWith('/profile/summary'))return r.fulfill({json:{sessions:0,sports:[],entries:0,logged_days:0,calories:0,average_calories:null,average_difference:null,days_with_target:0}});
+  if(u.pathname.endsWith('/energy'))return r.fulfill({json:{available:false,reason:'Completeaza profilul'}});
   return r.fulfill({json:[]});
  });
  return calls;
@@ -21,6 +24,8 @@ for(const width of [390,1366])test(`catalog on-demand at ${width}`,async({page})
  expect(calls.filter(c=>c.includes('/foods/search'))).toHaveLength(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
  await page.getByRole('button',{name:'Obiective',exact:true}).click();await expect(page).toHaveURL(/\/profile$/);
+ await expect(page.getByRole('heading',{name:'Profilul meu',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Sex folosit in calcul')).toBeVisible();
 });
 test('recipe reuses selected food and grams without submitting on search',async({page})=>{
  const calls=await setup(page);await page.goto('/nutrition/recipes');

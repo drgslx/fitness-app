@@ -37,7 +37,7 @@ function ProfileDashboard({ user }) {
       if (!mounted.current || id !== request.current) return;
       setData(next);
       if (!dirty.current) setForm(editableProfile(next.profile));
-      else if (next.activity_summary?.source === "sessions" && next.profile)
+      else if (next.profile)
         setForm((current) => ({ ...current, activity_level: next.profile.activity_level }));
       if (initial.current) {
         setWeight({ day: next.today, weight_kg: "" });
@@ -99,16 +99,14 @@ function ProfileDashboard({ user }) {
       () =>
         send("/profile", "PUT", profilePayload({
           ...form,
-          activity_level: permissions.activity_level
-            ? form.activity_level
-            : data.profile?.activity_level ?? form.activity_level,
+          activity_level: data.profile?.activity_level ?? form.activity_level,
         })),
       "Profil salvat. Recomandarea si tinta automata au fost reevaluate.",
       true,
     );
   }
   const today = data?.today || localDate();
-  const permissions = data?.edit_permissions || profilePermissions(data?.profile, today, data?.activity_summary);
+  const permissions = data?.edit_permissions || profilePermissions(data?.profile, today);
   function cancelEdit() {
     dirty.current = false;
     setForm(editableProfile(data.profile));

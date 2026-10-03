@@ -74,18 +74,19 @@ def test_overlap_unknown_zero_steps_and_missing_days(energy_client):
     assert test.get("/api/v1/energy").json()["days"][-2]["complete"] is False
 
 
-def test_weekly_planning_threshold_manual_override_and_edit_sync(energy_client):
+def test_daily_average_is_separate_from_session_target_and_manual_override(energy_client):
     test, session = energy_client
     for offset in range(3): steps(test, TODAY - timedelta(days=offset))
-    assert test.get("/api/v1/profile").json()["recommendation"]["maintenance_source"] == "initial_fallback"
+    assert test.get("/api/v1/profile").json()["recommendation"]["maintenance_source"] == "sessions"
     result = steps(test, TODAY - timedelta(days=3))
     profile = test.get("/api/v1/profile").json()
-    assert profile["recommendation"]["maintenance_source"] == "activity_average"
-    assert profile["active_goal"]["calories"] == result["planning_maintenance_kcal"]
+    assert profile["recommendation"]["maintenance_source"] == "sessions"
+    assert profile["recommendation"]["maintenance_kcal"] == round(1775 * 1.2)
+    assert profile["active_goal"]["calories"] == profile["recommendation"]["target_kcal"]
     before = result["planning_maintenance_kcal"]
     result = steps(test, steps=15000)
     assert result["planning_maintenance_kcal"] > before
-    assert test.get("/api/v1/profile").json()["active_goal"]["calories"] == result["planning_maintenance_kcal"]
+    assert test.get("/api/v1/profile").json()["active_goal"]["calories"] == profile["active_goal"]["calories"]
     test.put("/api/v1/goals", json={"effective_from": str(TODAY), "goal_type": "maintain", "calories": 2100, "protein": 120})
     steps(test, steps=2000)
     assert test.get("/api/v1/profile").json()["active_goal"]["calories"] == 2100
@@ -124,11 +125,14 @@ def test_ownership_invalid_fields_and_historical_weight(energy_client):
     assert data["days"][0]["available"] is False
     plan = workout(test)
     complete(test, plan)
+    sport = test.post("/api/v1/sport-types", json={"name": "Owned sport", "activity_type": "strength"})
+    assert sport.status_code == 201, sport.text
+    sport_id = sport.json()["id"]
     app.dependency_overrides[current_user] = lambda: {"uid": "bob"}
     assert test.get("/api/v1/energy").json()["available"] is False
     assert test.delete(f"/api/v1/daily-activity/{TODAY}").status_code == 404
     assert test.put(f'/api/v1/workouts/{plan["id"]}/completion').status_code == 404
-    assert test.put("/api/v1/sport-types/1/defaults", json={"activity_type": "strength"}).status_code == 404
+    assert test.put(f"/api/v1/sport-types/{sport_id}/defaults", json={"activity_type": "strength"}).status_code == 404
 
 
 def test_missing_session_duration_not_invented_and_template_energy_preserved(energy_client):

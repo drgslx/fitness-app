@@ -1,6 +1,14 @@
 const { test, expect } = require("@playwright/test");
 
 const today = "2026-09-26";
+const sport = {
+  id: 73,
+  name: "Sala",
+  activity_type: "strength",
+  default_duration_minutes: 65,
+  default_intensity: "moderate",
+  is_system: false,
+};
 
 const types = [
   {
@@ -50,6 +58,7 @@ async function mock(page) {
 
   let observation = null;
   let plans = [];
+  let nextSessionId = 201;
 
   const makeEnergy = () => {
     const day = {
@@ -155,33 +164,33 @@ async function mock(page) {
         net_kcal: 210,
       };
     } else if (path === "/sport-types") {
-      json = [
-        {
-          id: 1,
-          name: "Sala",
-          activity_type: "strength",
-          default_duration_minutes: 65,
-          default_intensity: "moderate",
-          is_system: false,
-        },
-      ];
-    } else if (path.endsWith("/exercises")) {
+      json = [sport];
+    } else if (path === `/sport-types/${sport.id}/exercises`) {
       json = [];
     } else if (path === "/workout-templates") {
       json = [];
     } else if (path === "/workouts") {
       if (req.method() === "POST") {
         plans.push({
-          id: 1,
+          id: nextSessionId++,
           completed: false,
           ...req.postDataJSON(),
         });
       }
 
-      json =
-        req.method() === "GET"
-          ? plans
-          : plans.at(-1);
+      json = req.method() === "GET"
+        ? plans.filter(plan => plan.day >= url.searchParams.get("start") && plan.day <= url.searchParams.get("end"))
+        : plans.at(-1);
+    } else if (/^\/workouts\/\d+\/completion$/.test(path)) {
+      const plan = plans.find(plan => plan.id === Number(path.split("/")[2]));
+      if (!plan) return route.fulfill({ status: 404, json: { detail: "Sesiune inexistenta" } });
+      plan.completed = req.method() === "PUT";
+      json = plan;
+    } else if (/^\/workouts\/\d+$/.test(path) && req.method() === "DELETE") {
+      const index = plans.findIndex(plan => plan.id === Number(path.split("/")[2]));
+      if (index < 0) return route.fulfill({ status: 404, json: { detail: "Sesiune inexistenta" } });
+      plans.splice(index, 1);
+      return route.fulfill({ status: 204 });
     } else if (path === "/profile") {
       json = {
         today,
@@ -378,6 +387,7 @@ test(
     await expect(
       page.getByLabel("Durata totala (minute)"),
     ).toHaveValue("60");
+    await page.getByLabel("Data", { exact: true }).fill(today);
 
     await page
       .getByLabel("Sport", {
@@ -401,6 +411,9 @@ test(
       ),
     ).toBeVisible();
 
+    const createdResponse = page.waitForResponse(response =>
+      new URL(response.url()).pathname === "/api/v1/workouts" && response.request().method() === "POST",
+    );
     await page
       .getByRole("button", {
         name: "Salveaza sesiunea",
@@ -408,9 +421,11 @@ test(
       })
       .click();
 
-    await expect(page).toHaveURL(
-      /\/workouts\/sessions$/,
-    );
+    const created = await (await createdResponse).json();
+    await expect(page).toHaveURL(new RegExp(`/workouts/sessions\\?day=${today}$`));
+    await expect(page.getByLabel("Saptamana care contine")).toHaveValue(created.day);
+    const session = page.locator("details").filter({ has: page.locator("summary", { hasText: created.title }) });
+    await expect(session.locator("summary time")).toHaveText(created.day);
 
     const saved = requests.find(
       (request) =>
@@ -421,11 +436,20 @@ test(
     expect(saved).toBeDefined();
 
     expect(saved.body).toMatchObject({
-      sport_type_id: 1,
+      sport_type_id: sport.id,
+      day: today,
       activity_type: "strength",
       duration_minutes: 65,
       steps_included: 0,
       exercises: [],
     });
+    await session.locator("summary").click();
+    await session.getByRole("button", { name: "Executat", exact: true }).click();
+    await expect(session.getByText("Executat", { exact: true })).toBeVisible();
+    expect(requests.find(request => request.path === `/workouts/${created.id}/completion`)).toMatchObject({ method: "PUT" });
+    page.once("dialog", dialog => dialog.accept());
+    await session.getByRole("button", { name: "Sterge", exact: true }).click();
+    await expect(session).toHaveCount(0);
+    expect(requests.find(request => request.path === `/workouts/${created.id}`)).toMatchObject({ method: "DELETE" });
   },
 );

@@ -22,7 +22,7 @@ export default function ProfileSettings({
       </h2>
       {initialSetup ? (
         <p className="text-sm text-muted">
-          Completeaza profilul pentru prima data. Sexul si data nasterii se pastreaza
+          Completeaza profilul pentru prima data. Sexul, data nasterii si nivelul ales se pastreaza
           dupa salvare. Inaltimea poate fi actualizata doar pana la 18 ani.
         </p>
       ) : (
@@ -33,8 +33,9 @@ export default function ProfileSettings({
       )}
       {activitySummary && (
         <div className="mb-3 space-y-1" aria-label="Activitatea din ultimele 7 zile">
-          <p className="text-sm text-accent">
-            {activitySummary.source === "sessions" ? "Nivel stabilit automat" : "Nivel ales manual"}
+          <h3 className="text-lg">Nivel de activitate curent</h3>
+          <p className="text-xl font-bold text-accent">
+            Nivel stabilit automat
             {": "}{activityOptions.find(([value]) => value === activitySummary.activity_level)?.[1]}
           </p>
           <p className="text-xs text-muted">
@@ -43,10 +44,13 @@ export default function ProfileSettings({
             {" ("}{activitySummary.start}{" – "}{activitySummary.end}{")."}
           </p>
           <p className="text-xs text-muted">
-            {activitySummary.source === "sessions"
-              ? "Nivelul se actualizeaza dupa antrenamentele finalizate. Alegerea manuala ramane salvata si revine cand nu mai ai antrenamente de peste 15 minute in ultimele 7 zile."
-              : "Nu ai antrenamente finalizate de peste 15 minute in ultimele 7 zile. Poti edita nivelul ales manual; acesta se foloseste la estimare cand nu exista suficiente zile complete de activitate zilnica."}
+            Nivelul se actualizeaza automat dupa antrenamentele finalizate din acest
+            interval. Fara antrenamente de peste 15 minute, nivelul este Sedentar.
           </p>
+          {activitySummary.missing_duration_sessions > 0 && <p className="text-xs text-amber-200">
+            {activitySummary.missing_duration_sessions} antrenamente fara durata nu intra
+            in acest calcul. Completeaza durata lor in lista sesiunilor.
+          </p>}
         </div>
       )}
       <form onSubmit={saveProfile}>
@@ -56,6 +60,8 @@ export default function ProfileSettings({
             today={today}
             change={change}
             permissions={permissions}
+            initialSetup={initialSetup}
+            activitySummary={activitySummary}
           />
           <div className="grid gap-3 sm:grid-cols-2">
             {form.goal === "lose" && (
@@ -104,7 +110,7 @@ export default function ProfileSettings({
             )}
           </div>
           <p className="text-xs text-muted">
-            Nivelul manual se foloseste cand nu ai antrenamente finalizate de peste
+            Nivelul curent se stabileste dupa antrenamentele finalizate de peste
             15 minute in ultimele 7 zile. Estimarea nu masoara direct necesarul caloric.
           </p>
           {form.goal === "gain" && (
