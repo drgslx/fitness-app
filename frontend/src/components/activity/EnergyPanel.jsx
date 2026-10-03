@@ -1,3 +1,4 @@
+import Button from "../ui/Button";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, send } from "../../api/client";
@@ -55,10 +56,10 @@ export default function EnergyPanel({ today, revision, onSaved }) {
   const selected = data?.days?.find((item) => item.day === day);
   return <section className="grid min-w-0 gap-3 rounded-xl border border-white/10 bg-surface/90 p-3 md:p-4" aria-labelledby="energy-title">
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 id="energy-title" className="text-xl">Energia si activitatea zilnica</h2>
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}>+ Adauga activitate</button></div>
+      <Button type="button" onClick={() => setOpen(!open)} aria-expanded={open}>+ Adauga activitate</Button></div>
     {error && <p role="alert" className="text-red-200">{error}</p>}
     {open && <div className="flex flex-wrap gap-2">
-      <button type="button" onClick={() => document.getElementById("daily-steps")?.focus()}>Mers / pasi</button>
+      <Button type="button" onClick={() => document.getElementById("daily-steps")?.focus()}>Mers / pasi</Button>
       <Link className="rounded-lg border border-white/20 px-3 py-2" to="/workouts/sessions/new?activity=strength">Forta</Link>
       <Link className="rounded-lg border border-white/20 px-3 py-2" to="/workouts/sessions/new?activity=cardio">Cardio</Link>
       <Link className="rounded-lg border border-white/20 px-3 py-2" to="/workouts/sessions/new?activity=combat">Sport</Link>
@@ -85,8 +86,8 @@ export default function EnergyPanel({ today, revision, onSaved }) {
           </select></label>
         </fieldset>
         <label className="flex items-center gap-2"><input type="checkbox" disabled={busy} checked={form.complete} onChange={(e) => change("complete", e.target.checked)} />Am completat pasii si toate sesiunile executate ale zilei (inclusiv daca nu am facut sport).</label>
-        <div className="flex flex-wrap gap-2"><button disabled={busy}>Salveaza activitatea zilei</button>
-          {selected?.observation && <button type="button" disabled={busy} onClick={(e) => { if (window.confirm("Stergi pasii si confirmarea zilei? Sesiunile raman.")) save(e, true); }}>Sterge pasii zilei</button>}
+        <div className="flex flex-wrap gap-2"><Button disabled={busy}>Salveaza activitatea zilei</Button>
+          {selected?.observation && <Button type="button" disabled={busy} onClick={(e) => { if (window.confirm("Stergi pasii si confirmarea zilei? Sesiunile raman.")) save(e, true); }}>Sterge pasii zilei</Button>}
           <Link className="px-2 py-2" to={`/workouts/sessions?day=${day}`}>Vezi / editeaza sesiunile →</Link></div>
       </form>
       {dirty.current && <p className="text-xs text-amber-200">Valorile de mai jos folosesc datele salvate.</p>}

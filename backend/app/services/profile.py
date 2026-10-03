@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.api.common import row
 from app.models.profile import BodyWeight
 from app.models.tracking import NutritionGoal
+from app.services.training_activity import summarize_activity
 
 
 # Approximate total activity multipliers, including exercise AND daily movement.
@@ -29,6 +30,17 @@ def activity_level_for_sessions(sessions):
     if sessions <= 6:
         return "high"
     return "very_high"
+
+
+def profile_edit_permissions(profile, today):
+    creating = profile is None
+    return {
+        "sex": creating,
+        "birth_date": creating,
+        "height_cm": creating or age_on(profile.birth_date, today) < 18,
+        "activity_level": creating,
+        "goal": True,
+    }
 
 
 def latest_weight(db, uid, today):
@@ -107,9 +119,10 @@ def is_valid_goal(goal, day):
     return goal is not None and (goal.valid_until is None or goal.valid_until >= day)
 
 
-def recommendation(db, profile, today):
+def recommendation(db, profile, today, report=None):
     from app.services.energy import energy_report
-    report = energy_report(db, profile, today) if profile else None
+    report = report if report is not None else energy_report(db, profile, today) if profile else None
+    activity = report["activity_summary"] if report else summarize_activity(profile, today, [])
     maintenance = report["planning_maintenance_kcal"] if report else None
     result = estimate(profile, latest_weight(db, profile.user_id, today) if profile else None, today,
                       maintenance_override=maintenance,
@@ -161,13 +174,18 @@ def sync_calorie_goal(db, profile, today):
 
 
 def profile_payload(db, profile, uid, today):
+    from app.services.energy import energy_report
     weights = db.scalars(select(BodyWeight).where(BodyWeight.user_id == uid, BodyWeight.day <= today)
                          .order_by(BodyWeight.day.desc())).all()
     current = latest_goal(db, uid, today)
-    current_recommendation = recommendation(db, profile, today)
+    report = energy_report(db, profile, today) if profile else None
+    activity = report["activity_summary"] if report else summarize_activity(profile, today, [])
+    current_recommendation = recommendation(db, profile, today, report=report)
     return {
         "today": today.isoformat(),
         "profile": {key: value for key, value in row(profile).items() if key != "user_id"} if profile else None,
+        "edit_permissions": profile_edit_permissions(profile, today),
+        "activity_summary": activity,
         "weights": [{"id": item.id, "day": item.day, "weight_kg": item.weight_kg} for item in weights],
         "recommendation": current_recommendation,
         "active_goal": row(current) if is_valid_goal(current, today) else None,

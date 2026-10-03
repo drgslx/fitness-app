@@ -1,3 +1,4 @@
+import Button from "../../../../components/ui/Button";
 import React, { useEffect, useRef, useState } from "react";
 import EnergyFields from "../../../../components/activity/EnergyFields";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -75,9 +76,17 @@ export default function WorkoutSessionForm({
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [copyingTemplate, setCopyingTemplate] = useState(false);
   const [message, setMessage] = useState("");
   const draftRef = useRef(null);
-  const [form, setForm] = useState(() => createSession(initialSession || { activity_type: params.get("activity"), exercises: [] }));
+  const [form, setForm] = useState(() =>
+    createSession(
+      initialSession || {
+        activity_type: params.get("activity"),
+        exercises: [],
+      },
+    ),
+  );
   const [sports, setSports] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [activityTypes, setActivityTypes] = useState([]);
@@ -96,9 +105,7 @@ export default function WorkoutSessionForm({
 
   const mutationRef = useRef(false);
 
-  const selectedSport = sports.find(
-    (sport) => sport.name === form.sport
-  );
+  const selectedSport = sports.find((sport) => sport.name === form.sport);
 
   const selectedSportId = selectedSport?.id;
 
@@ -159,9 +166,7 @@ export default function WorkoutSessionForm({
 
     async function load() {
       try {
-        const data = await api(
-          `/sport-types/${selectedSportId}/exercises`
-        );
+        const data = await api(`/sport-types/${selectedSportId}/exercises`);
 
         if (active) setExerciseCatalog(data);
       } catch (currentError) {
@@ -191,14 +196,14 @@ export default function WorkoutSessionForm({
       exercises: current.exercises.map((exercise) =>
         exercise.clientKey === clientKey
           ? { ...exercise, ...changes }
-          : exercise
+          : exercise,
       ),
     }));
   }
 
   function selectExercise(clientKey, exerciseId) {
     const selected = exerciseCatalog.find(
-      (exercise) => String(exercise.id) === exerciseId
+      (exercise) => String(exercise.id) === exerciseId,
     );
 
     updateExercise(clientKey, {
@@ -232,7 +237,7 @@ export default function WorkoutSessionForm({
     setForm((current) => ({
       ...current,
       exercises: current.exercises.filter(
-        (exercise) => exercise.clientKey !== clientKey
+        (exercise) => exercise.clientKey !== clientKey,
       ),
     }));
   }
@@ -245,7 +250,9 @@ export default function WorkoutSessionForm({
     setMessage("");
     try {
       const created = await send(
-        `/workout-templates/${template.id}/sessions`, "POST", { day: form.day }
+        `/workout-templates/${template.id}/sessions`,
+        "POST",
+        { day: form.day },
       );
       navigate(`/workouts/sessions?day=${encodeURIComponent(created.day)}`, {
         replace: true,
@@ -259,8 +266,8 @@ export default function WorkoutSessionForm({
     }
   }
 
-  async function editTemplate(template) {
-    if (mutationRef.current) return;
+  async function editTemplate(template, temporary = false) {
+    if (mutationRef.current || (temporary && !form.day)) return;
     mutationRef.current = true;
     setBusy(true);
     setError("");
@@ -268,8 +275,11 @@ export default function WorkoutSessionForm({
     try {
       const current = await api(`/workout-templates/${template.id}`);
       draftRef.current = form;
-      setForm(createSession({ ...current, title: current.name, day: form.day }));
-      setEditingTemplate(current.id);
+      setForm(
+        createSession({ ...current, title: current.name, day: form.day }),
+      );
+      setEditingTemplate(temporary ? null : current.id);
+      setCopyingTemplate(temporary);
     } catch (currentError) {
       setError(currentError.message);
     } finally {
@@ -282,19 +292,28 @@ export default function WorkoutSessionForm({
     if (draftRef.current) setForm(draftRef.current);
     draftRef.current = null;
     setEditingTemplate(null);
+    setCopyingTemplate(false);
     setMode("template");
     setError("");
   }
 
   function cancelTemplateEdit() {
     if (busy) return;
-    if (!window.confirm("Renunti la modificarile nesalvate ale sablonului?")) return;
+    if (!window.confirm(copyingTemplate
+      ? "Renunti la modificarile temporare ale sesiunii?"
+      : "Renunti la modificarile nesalvate ale sablonului?"))
+      return;
     closeTemplateEditor();
   }
 
   async function deleteTemplate(template) {
     if (mutationRef.current) return;
-    if (!window.confirm(`Stergi sablonul "${template.name}"? Sesiunile deja adaugate in calendar raman neschimbate.`)) return;
+    if (
+      !window.confirm(
+        `Stergi sablonul "${template.name}"? Sesiunile deja adaugate in calendar raman neschimbate.`,
+      )
+    )
+      return;
 
     mutationRef.current = true;
     setBusy(true);
@@ -304,7 +323,7 @@ export default function WorkoutSessionForm({
       await send(`/workout-templates/${template.id}`, "DELETE");
 
       setTemplates((current) =>
-        current.filter((item) => item.id !== template.id)
+        current.filter((item) => item.id !== template.id),
       );
     } catch (currentError) {
       setError(currentError.message);
@@ -324,10 +343,14 @@ export default function WorkoutSessionForm({
       return;
     }
 
-    if (editingTemplate && !window.confirm(
-      "Salvezi modificarile sablonului? Vor fi folosite la adaugarile viitoare. " +
-      "Sesiunile deja planificate sau executate NU se modifica."
-    )) return;
+    if (
+      editingTemplate &&
+      !window.confirm(
+        "Salvezi modificarile sablonului? Vor fi folosite la adaugarile viitoare. " +
+          "Sesiunile deja planificate sau executate NU se modifica.",
+      )
+    )
+      return;
 
     mutationRef.current = true;
     setBusy(true);
@@ -342,9 +365,9 @@ export default function WorkoutSessionForm({
         ...exercise,
         name: exercise.name.trim(),
       })),
-      save_as_template: !editingTemplate && saveAsTemplate,
+      save_as_template: !editingTemplate && !copyingTemplate && saveAsTemplate,
       template_name:
-        !editingTemplate && saveAsTemplate
+        !editingTemplate && !copyingTemplate && saveAsTemplate
           ? templateName.trim() || form.title.trim()
           : null,
     };
@@ -363,7 +386,9 @@ export default function WorkoutSessionForm({
           item.id === updated.id ? updated : item
         ));
         closeTemplateEditor();
-        setMessage("Sablonul a fost actualizat. Sesiunile din calendar au ramas neschimbate.");
+        setMessage(
+          "Sablonul a fost actualizat. Sesiunile din calendar au ramas neschimbate.",
+        );
       } else {
         await onSubmit(payload);
       }
@@ -382,46 +407,67 @@ export default function WorkoutSessionForm({
   return (
     <div className="grid gap-4">
       {error && (
-        <p className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]" role="alert">
+        <p className="notice-error" role="alert">
           {error}
         </p>
       )}
 
       {message && <p role="status">{message}</p>}
-      {editing && <p role="note">Editezi doar sesiunea din aceasta zi. Sablonul ramane neschimbat.</p>}
+      {editing && (
+        <p role="note">
+          Editezi doar sesiunea din aceasta zi. Sablonul ramane neschimbat.
+        </p>
+      )}
       {editingTemplate && (
-        <aside className="my-4 flex min-w-0 flex-col gap-4 rounded-2xl border border-white/10 bg-surface/90 p-4 shadow-xl" role="note">
+        <aside className="panel" role="note">
           <h3>Editeaza sablonul</h3>
-          <p>Modifici programul reutilizabil. Valorile noi vor fi folosite cand
-          adaugi sesiuni pe viitor. Sesiunile deja planificate sau executate
-          raman neschimbate.</p>
+          <p>
+            Modifici programul reutilizabil. Valorile noi vor fi folosite cand
+            adaugi sesiuni pe viitor. Sesiunile deja planificate sau executate
+            raman neschimbate.
+          </p>
         </aside>
       )}
-      {!editingTemplate && (
+      {copyingTemplate && (
+        <aside className="panel" role="note">
+          <h3>Modifica si adauga</h3>
+          <p>
+            Modifica aceasta copie, apoi adaug-o la data aleasa. Sablonul salvat
+            ramane neschimbat.
+          </p>
+        </aside>
+      )}
+      {!editingTemplate && !copyingTemplate && (
         <div className="my-3 flex flex-wrap items-center gap-3">
           {!editing && (
             <>
-              <button
+              <Button
                 type="button"
                 disabled={busy}
                 aria-pressed={mode === "new"}
-                className={mode === "new" ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink" : "!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent"}
+                className={
+                  mode === "new"
+                    ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink"
+                    : "!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent"
+                }
                 onClick={() => setMode("new")}
               >
                 Sesiune noua
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
                 disabled={busy}
                 aria-pressed={mode === "template"}
                 className={
-                  mode === "template" ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink" : "!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent"
+                  mode === "template"
+                    ? "!border-accent !bg-accent !text-ink hover:!bg-[#8affad] hover:!text-ink"
+                    : "!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent"
                 }
                 onClick={() => setMode("template")}
               >
                 Din sesiune salvata
-              </button>
+              </Button>
             </>
           )}
 
@@ -440,7 +486,7 @@ export default function WorkoutSessionForm({
         </div>
       )}
 
-      {!editing && !editingTemplate && mode === "template" ? (
+      {!editing && !editingTemplate && !copyingTemplate && mode === "template" ? (
         <section className="grid gap-3">
           <h3>Sesiunile mele salvate</h3>
 
@@ -456,32 +502,41 @@ export default function WorkoutSessionForm({
           </label>
           <p className="text-muted">
             Alege data, apoi foloseste o sesiune salvata pentru a o adauga
-            direct in plan. Poti edita apoi exercitiile si greutatile din
-            sesiunile saptamanii, fara sa modifici sablonul.
+            direct in plan sau alege „Modifica si adauga” pentru a ajusta sesiunea
+            inainte de adaugare, fara sa modifici sablonul.
           </p>
 
           {!templates.length && (
             <p>
-              Nu ai sesiuni salvate. Creeaza o sesiune si bifeaza
-              salvarea ca sablon reutilizabil.
+              Nu ai sesiuni salvate. Creeaza o sesiune si bifeaza salvarea ca
+              sablon reutilizabil.
             </p>
           )}
 
           {templates.map((template) => (
-            <article className="rounded-xl border border-white/10 bg-ink/70 p-4" key={template.id}>
+            <article
+              className="rounded-xl border border-white/10 bg-ink/70 p-4"
+              key={template.id}
+            >
               <div>
                 <strong>{template.name}</strong>
-                <p className="text-sm text-muted">{template.sport} / {template.exercises.length} exercitii</p>
+                <p className="text-sm text-muted">
+                  {template.sport} / {template.exercises.length} exercitii
+                </p>
                 <details>
                   <summary>Vezi exercitiile salvate</summary>
                   <ul>
                     {template.exercises.map((exercise, index) => (
                       <li key={index}>
                         <strong>{exercise.name}</strong>
-                        {" / "}{exercise.sets} seturi
-                        {exercise.reps != null && ` / ${exercise.reps} repetari`}
-                        {exercise.weight_kg != null && ` / ${exercise.weight_kg} kg`}
-                        {exercise.minutes != null && ` / ${exercise.minutes} min`}
+                        {" / "}
+                        {exercise.sets} seturi
+                        {exercise.reps != null &&
+                          ` / ${exercise.reps} repetari`}
+                        {exercise.weight_kg != null &&
+                          ` / ${exercise.weight_kg} kg`}
+                        {exercise.minutes != null &&
+                          ` / ${exercise.minutes} min`}
                         {exercise.notes && ` / ${exercise.notes}`}
                       </li>
                     ))}
@@ -490,46 +545,59 @@ export default function WorkoutSessionForm({
               </div>
 
               <div className="my-3 flex flex-wrap items-center gap-3">
-                <button
+                <Button
                   type="button"
                   disabled={busy || !form.day}
                   onClick={() => useTemplate(template)}
                 >
                   Adauga la data aleasa
-                </button>
+                </Button>
 
-                <button type="button" className="!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]"
-                  disabled={busy} onClick={() => editTemplate(template)}>
-                  Editeaza sablonul
-                </button>
-
-                <button
+                <Button
                   type="button"
-                  className="!border-[#82433f] !bg-[#321a18] !text-[#ffaaa3] hover:!border-[#ff766e] hover:!bg-[#46211e]"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => editTemplate(template)}
+                >
+                  Editeaza sablonul
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy || !form.day}
+                  onClick={() => editTemplate(template, true)}
+                >
+                  Modifica si adauga
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="danger"
                   disabled={busy}
                   onClick={() => deleteTemplate(template)}
                 >
                   Sterge sablonul
-                </button>
+                </Button>
               </div>
             </article>
           ))}
         </section>
       ) : (
         <form onSubmit={submit}>
-          <div className="grid gap-3 md:grid-cols-2">
-            {!editingTemplate && <label>
-              Data
-              <input
-                type="date"
-                required
-                disabled={busy}
-                value={form.day}
-                onChange={(event) =>
-                  updateForm("day", event.target.value)
-                }
-              />
-            </label>}
+          <div className="form-grid">
+            {!editingTemplate && (
+              <label>
+                Data
+                <input
+                  type="date"
+                  required
+                  disabled={busy}
+                  value={form.day}
+                  onChange={(event) => updateForm("day", event.target.value)}
+                />
+              </label>
+            )}
 
             <label>
               {editingTemplate ? "Nume sablon" : "Titlu"}
@@ -539,9 +607,7 @@ export default function WorkoutSessionForm({
                 maxLength={160}
                 value={form.title}
                 placeholder="Ex: Full body"
-                onChange={(event) =>
-                  updateForm("title", event.target.value)
-                }
+                onChange={(event) => updateForm("title", event.target.value)}
               />
             </label>
 
@@ -595,14 +661,12 @@ export default function WorkoutSessionForm({
               maxLength={2000}
               value={form.notes}
               placeholder="Observatii despre sesiune"
-              onChange={(event) =>
-                updateForm("notes", event.target.value)
-              }
+              onChange={(event) => updateForm("notes", event.target.value)}
             />
           </label>
 
           {catalogError && (
-            <p className="rounded-lg border border-red-400/30 bg-[#321a18] px-3 py-2 text-[#ffaaaa]" role="alert">
+            <p className="notice-error" role="alert">
               {catalogError}
             </p>
           )}
@@ -613,9 +677,9 @@ export default function WorkoutSessionForm({
 
           {/* Butonul ramane deasupra tuturor exercitiilor. */}
           <div className="my-3 flex flex-wrap items-center gap-2">
-            <button
+            <Button
               type="button"
-              className="!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]"
+              variant="secondary"
               disabled={
                 busy ||
                 loadingExercises ||
@@ -625,10 +689,10 @@ export default function WorkoutSessionForm({
               onClick={addExercise}
             >
               + Adauga exercitiu
-            </button>
+            </Button>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
             {visibleExercises.map(({ exercise, index }) => (
               <fieldset
                 className="rounded-xl border border-white/15 p-3"
@@ -637,30 +701,30 @@ export default function WorkoutSessionForm({
               >
                 <legend>Exercitiul {index + 1}</legend>
 
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="form-grid">
                   <label>
                     Exercitiu
                     <select
                       required
                       disabled={loadingExercises}
-                      value={exercise.exercise_id ?? (exercise.name ? "legacy" : "")}
+                      value={
+                        exercise.exercise_id ?? (exercise.name ? "legacy" : "")
+                      }
                       onChange={(event) =>
-                        selectExercise(
-                          exercise.clientKey,
-                          event.target.value
-                        )
+                        selectExercise(exercise.clientKey, event.target.value)
                       }
                     >
                       <option value="">Alege exercitiul</option>
                       {exercise.exercise_id == null && exercise.name && (
-                        <option value="legacy">{exercise.name} (salvat anterior)</option>
+                        <option value="legacy">
+                          {exercise.name} (salvat anterior)
+                        </option>
                       )}
 
                       {exercise.exercise_id != null &&
                         !exerciseCatalog.some(
                           (item) =>
-                            String(item.id) ===
-                            String(exercise.exercise_id)
+                            String(item.id) === String(exercise.exercise_id),
                         ) && (
                           <option value={exercise.exercise_id}>
                             {exercise.name} (salvat anterior)
@@ -712,18 +776,18 @@ export default function WorkoutSessionForm({
                   />
                 </label>
 
-                <button
+                <Button
                   type="button"
-                  className="!border-[#82433f] !bg-[#321a18] !text-[#ffaaa3] hover:!border-[#ff766e] hover:!bg-[#46211e]"
+                  variant="danger"
                   onClick={() => removeExercise(exercise.clientKey)}
                 >
                   Elimina exercitiul
-                </button>
+                </Button>
               </fieldset>
             ))}
           </div>
 
-          {!editingTemplate && (
+          {!editingTemplate && !copyingTemplate && (
             <fieldset className="grid gap-3" disabled={busy}>
               <legend>Reutilizare</legend>
 
@@ -731,11 +795,13 @@ export default function WorkoutSessionForm({
                 <input
                   type="checkbox"
                   checked={saveAsTemplate}
-                  onChange={(event) =>
-                    setSaveAsTemplate(event.target.checked)
-                  }
+                  onChange={(event) => setSaveAsTemplate(event.target.checked)}
                 />
-                <span>{editing ? "Creeaza si un sablon nou din aceasta sesiune" : "Salveaza si ca sablon reutilizabil"}</span>
+                <span>
+                  {editing
+                    ? "Creeaza si un sablon nou din aceasta sesiune"
+                    : "Salveaza si ca sablon reutilizabil"}
+                </span>
               </label>
 
               {saveAsTemplate && (
@@ -745,9 +811,7 @@ export default function WorkoutSessionForm({
                     maxLength={160}
                     value={templateName}
                     placeholder={form.title || "Ex: Full body A"}
-                    onChange={(event) =>
-                      setTemplateName(event.target.value)
-                    }
+                    onChange={(event) => setTemplateName(event.target.value)}
                   />
                 </label>
               )}
@@ -755,16 +819,25 @@ export default function WorkoutSessionForm({
           )}
 
           <div className="flex flex-wrap gap-2">
-            {editingTemplate && (
-              <button type="button" className="!border-[#3c6654] !bg-[#193329] !text-copy hover:!border-accent hover:!bg-[#204333]" disabled={busy}
-                onClick={cancelTemplateEdit}>Anuleaza modificarile</button>
+            {(editingTemplate || copyingTemplate) && (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={cancelTemplateEdit}
+              >
+                Anuleaza modificarile
+              </Button>
             )}
-            <button
-              type="submit"
-              disabled={busy || loadingExercises}
-            >
-              {busy ? "Se salveaza..." : editingTemplate ? "Salveaza sablonul" : submitLabel}
-            </button>
+            <Button type="submit" disabled={busy || loadingExercises}>
+              {busy
+                ? "Se salveaza..."
+                : editingTemplate
+                  ? "Salveaza sablonul"
+                  : copyingTemplate
+                    ? "Adauga la data aleasa"
+                    : submitLabel}
+            </Button>
           </div>
         </form>
       )}

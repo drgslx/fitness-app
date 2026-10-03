@@ -1,6 +1,14 @@
-import { test, expect } from "@playwright/test";
+const { test, expect } = require("@playwright/test");
 
 const today = "2026-09-26";
+const sport = {
+  id: 73,
+  name: "Sala",
+  activity_type: "strength",
+  default_duration_minutes: 65,
+  default_intensity: "moderate",
+  is_system: false,
+};
 
 const types = [
   {
@@ -50,6 +58,7 @@ async function mock(page, initialPlans = []) {
 
   let observation = null;
   let plans = initialPlans;
+  let nextSessionId = 201;
 
   const makeEnergy = () => {
     const day = {
@@ -155,16 +164,7 @@ async function mock(page, initialPlans = []) {
         net_kcal: 210,
       };
     } else if (path === "/sport-types") {
-      json = [
-        {
-          id: plans.length + 1,
-          name: "Sala",
-          activity_type: "strength",
-          default_duration_minutes: 65,
-          default_intensity: "moderate",
-          is_system: false,
-        },
-      ];
+      json = [sport];
     } else if (path.endsWith("/exercises")) {
       json = [];
     } else if (path === "/workout-templates") {
@@ -172,7 +172,7 @@ async function mock(page, initialPlans = []) {
     } else if (path === "/workouts") {
       if (req.method() === "POST") {
         plans.push({
-          id: 1,
+          id: nextSessionId++,
           completed: false,
           ...req.postDataJSON(),
         });
@@ -180,7 +180,7 @@ async function mock(page, initialPlans = []) {
 
       json =
         req.method() === "GET"
-          ? plans.map((plan) => ({ ...plan,
+          ? plans.filter(plan => plan.day >= url.searchParams.get("start") && plan.day <= url.searchParams.get("end")).map((plan) => ({ ...plan,
               has_completion: Boolean(plan.completed),
               completed: Boolean(plan.completed) && plan.day <= today,
               can_complete: plan.day <= today,
@@ -404,6 +404,8 @@ test(
       )
       .fill("0");
 
+    const createdResponse = page.waitForResponse(response =>
+      new URL(response.url()).pathname === "/api/v1/workouts" && response.request().method() === "POST");
     await page
       .getByRole("button", {
         name: "Salveaza sesiunea",
@@ -411,9 +413,11 @@ test(
       })
       .click();
 
-    await expect(page).toHaveURL(
-      /\/workouts\/sessions$/,
-    );
+    const created = await (await createdResponse).json();
+    await expect(page).toHaveURL(new RegExp(`/workouts/sessions\\?day=${today}$`));
+    await expect(page.getByLabel("Saptamana care contine")).toHaveValue(created.day);
+    const session = page.locator("details").filter({ has: page.locator("summary", { hasText: created.title }) });
+    await expect(session.locator("summary time")).toHaveText(created.day);
 
     const saved = requests.find(
       (request) =>
@@ -433,7 +437,8 @@ test(
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
     expect(saved.body).toMatchObject({
-      sport_type_id: 1,
+      sport_type_id: sport.id,
+      day: today,
       activity_type: "strength",
       steps_included: 0,
       exercises: [],

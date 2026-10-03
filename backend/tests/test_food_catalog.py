@@ -97,6 +97,7 @@ def test_import_idempotent_and_snapshot_unchanged(client):
 
 def test_http_contract(monkeypatch):
     monkeypatch.setattr(catalog.settings,"off_user_agent","Athletica/1.0 (test@example.test)")
+    monkeypatch.setattr(catalog.settings,"off_country_tag","en:romania")
     real_client=httpx.Client
     seen=[]
     def handle(request):
@@ -134,7 +135,7 @@ def test_offline_seed_is_streamed_filtered_and_repeatable(tmp_path):
     engine=create_engine(url); Base.metadata.create_all(engine)
     env={**os.environ,'DATABASE_URL':url}
     for _ in range(2):
-        subprocess.run([sys.executable,'-m','app.scripts.import_off',str(path)],env=env,check=True,capture_output=True,cwd=Path(__file__).resolve().parents[1])
+        subprocess.run([sys.executable,'-m','scripts.import_off',str(path)],env=env,check=True,capture_output=True,cwd=Path(__file__).resolve().parents[1])
     with engine.connect() as conn:
         assert len(conn.execute(select(Food)).all())==1
     engine.dispose()
@@ -142,9 +143,25 @@ def test_offline_seed_is_streamed_filtered_and_repeatable(tmp_path):
 
 def test_barcode_lookup_discards_product_without_romania_tag(monkeypatch):
     monkeypatch.setattr(catalog.settings,"off_user_agent","Athletica/1.0 (test@example.test)")
+    monkeypatch.setattr(catalog.settings,"off_country_tag","en:romania")
     real_client=httpx.Client
     foreign={**PRODUCT,"countries_tags":["en:united-states"]}
     def handle(request):
         return httpx.Response(200,json={"product":foreign})
     monkeypatch.setattr(catalog.httpx,"Client",lambda **kw: real_client(transport=httpx.MockTransport(handle),**kw))
     assert catalog.remote_products(PRODUCT["code"]) == []
+
+
+@pytest.mark.parametrize("query", [PRODUCT["code"], "branza"])
+def test_global_lookup_does_not_apply_country_filter(monkeypatch, query):
+    monkeypatch.setattr(catalog.settings, "off_user_agent", "Athletica/1.0 (test@example.test)")
+    monkeypatch.setattr(catalog.settings, "off_country_tag", "")
+    foreign = {**PRODUCT, "countries_tags": ["en:united-states"]}
+    real_client = httpx.Client
+    def handle(request):
+        assert "tag_0" not in request.url.params
+        return httpx.Response(200, json={"product": foreign} if "/product/" in request.url.path
+                              else {"products": [foreign]})
+    monkeypatch.setattr(catalog.httpx, "Client", lambda **kw: real_client(
+        transport=httpx.MockTransport(handle), **kw))
+    assert catalog.remote_products(query) == [foreign]

@@ -27,7 +27,7 @@ def recent_activity(energy_client, monkeypatch):
 ])
 def test_activity_level_uses_all_executed_sessions_including_same_day(recent_activity, count, level, factor):
     test, _ = recent_activity
-    save_profile(test, activity_level="light", goal="maintain")
+    save_profile(test, goal="maintain")
     # Deliberately put all workouts in one day to prevent day-based deduplication.
     for _ in range(count):
         complete(test, workout(test, day=str(TODAY)))

@@ -124,6 +124,9 @@ def test_ownership_invalid_fields_and_historical_weight(energy_client):
     assert data["days"][0]["available"] is False
     plan = workout(test)
     complete(test, plan)
+    sport = test.post("/api/v1/sport-types", json={"name": "Owned sport", "activity_type": "strength"})
+    assert sport.status_code == 201, sport.text
+    sport_id = sport.json()["id"]
     app.dependency_overrides[current_user] = lambda: {"uid": "bob"}
     assert test.get("/api/v1/energy").json()["available"] is False
     assert test.delete(f"/api/v1/daily-activity/{TODAY}").status_code == 404

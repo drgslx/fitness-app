@@ -7,9 +7,11 @@ export default function EnergyFields({ value, onChange, disabled = false, day, t
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
-    api("/activity-types", { signal: controller.signal }).then(setTypes).catch((e) => {
-      if (!controller.signal.aborted) setError(e.message);
-    });
+    api("/activity-types", { signal: controller.signal })
+      .then(setTypes)
+      .catch((e) => {
+        if (!controller.signal.aborted) setError(e.message);
+      });
     return () => controller.abort();
   }, []);
   useEffect(() => {
@@ -17,10 +19,25 @@ export default function EnergyFields({ value, onChange, disabled = false, day, t
     setPreview(null);
     if (planning || !day || !value.activity_type || !value.duration_minutes) return () => controller.abort();
     const timer = setTimeout(() => {
-      api("/energy/preview", { method: "POST", signal: controller.signal, body: JSON.stringify({
-        day, activity_type: value.activity_type, duration_minutes: Number(value.duration_minutes), intensity: value.intensity || "moderate",
-      }) }).then((data) => { if (!controller.signal.aborted) { setPreview(data); setError(""); } })
-        .catch((e) => { if (!controller.signal.aborted) setError(e.message); });
+      api("/energy/preview", {
+        method: "POST",
+        signal: controller.signal,
+        body: JSON.stringify({
+          day,
+          activity_type: value.activity_type,
+          duration_minutes: Number(value.duration_minutes),
+          intensity: value.intensity || "moderate",
+        }),
+      })
+        .then((data) => {
+          if (!controller.signal.aborted) {
+            setPreview(data);
+            setError("");
+          }
+        })
+        .catch((e) => {
+          if (!controller.signal.aborted) setError(e.message);
+        });
     }, 250);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [day, value.activity_type, value.duration_minutes, value.intensity, planning]);

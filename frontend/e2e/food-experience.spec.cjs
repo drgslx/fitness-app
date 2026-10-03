@@ -1,4 +1,4 @@
-const {test, expect} = require('@playwright/test');
+const {test,expect} = require('@playwright/test');
 const food = {id:7,name:'Branza test',user_id:'test-user',is_public:true,calories:200,nutrients:{protein:12,carbohydrates:4,fat:15,salt:1},source:'openfoodfacts',barcode:'5941234567890',catalog_data:{nutriscore:'B',ingredients_text:null,nova_group:null}};
 async function setup(page, admin=false) {
  const state={calls:[],favorite:false,entries:[],archived:false};
@@ -36,9 +36,9 @@ test('quick add inherits diary context and refreshes actual totals',async({page}
  await dialog.getByLabel('Grame',{exact:true}).fill('175');
  await dialog.getByRole('button',{name:'Salveaza in jurnal'}).click();
  await expect(dialog).toHaveCount(0);
- await expect(page.getByText('350.0 kcal',{exact:true})).toBeVisible();
+ await expect(page.locator('.metric').getByText('350.0 kcal',{exact:true})).toBeVisible();
  const writes=state.calls.filter(c=>c.path==='/diary'&&c.method==='POST');
- expect(writes).toHaveLength(1);expect(writes[0].body).toEqual({food_id:7,grams:175,meal:'Cina',day:'2026-09-29'});
+ expect(writes).toHaveLength(1);expect(writes[0].body).toEqual({food_id:food.id,grams:175,meal:'Cina',day:'2026-09-29'});
  await page.locator('tbody').getByRole('button',{name:'Branza test'}).click();
  await expect(page.getByRole('dialog').getByRole('columnheader',{name:/175 g/i})).toBeVisible();
  await expect(page.getByRole('dialog').getByText('350 kcal',{exact:true})).toBeVisible();

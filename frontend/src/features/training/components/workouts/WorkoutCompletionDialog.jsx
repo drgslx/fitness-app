@@ -1,3 +1,4 @@
+import Button from "../../../../components/ui/Button";
 import React, { useEffect, useRef, useState } from "react";
 
 export const INTENSITY_LABELS = {
@@ -59,8 +60,8 @@ export default function WorkoutCompletionDialog({ session, onSave, onCancel }) {
         <p className="text-xs text-muted">Durata include pauzele. Aceste date sunt folosite la calculul mentinerii.</p>
         {error && <p role="alert" className="text-[#ffaaaa]">{error}</p>}
         <div className="flex justify-end gap-2">
-          <button type="button" disabled={busy} onClick={onCancel}>Anuleaza</button>
-          <button type="submit" disabled={busy}>{busy ? "Se salveaza..." : session.completed ? "Salveaza detaliile" : "Confirma executarea"}</button>
+          <Button type="button" disabled={busy} onClick={onCancel}>Anuleaza</Button>
+          <Button type="submit" disabled={busy}>{busy ? "Se salveaza..." : session.completed ? "Salveaza detaliile" : "Confirma executarea"}</Button>
         </div>
       </form>
     </dialog>
