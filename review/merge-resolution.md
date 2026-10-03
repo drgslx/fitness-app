@@ -30,6 +30,7 @@ These are the feature's resulting differences from main. Other incoming main fil
 | `frontend/e2e/activity.spec.cjs` | Retain main's stable mock identifiers and date filtering while testing completion dialogs and future restrictions. |
 | `frontend/e2e/profile.spec.cjs` | Combine static personal-field, goal editing and rolling-window tests with main's signup, retry and activity-refresh coverage. |
 | `frontend/e2e/responsive.spec.cjs` | Adapt layout assertions to the preserved accordion and visible action footer. |
+| `frontend/package.json` | Use Node's automatic unit-test discovery instead of passing a directory unsupported by CI's Node 22 runner. |
 | `frontend/src/components/activity/EnergyFields.jsx` | Hide duration/intensity during planning and avoid planning calorie previews. |
 | `frontend/src/components/activity/EnergyPanel.jsx` | Explain recent session counts, individual energy contributions and confirmed-day averages; use main's shared button component. |
 | `frontend/src/components/activity/activityLevels.js` | Share activity labels and the 0 / 1-2 / 3-4 / 5-6 / 7+ session thresholds. |
@@ -80,6 +81,8 @@ The temporary test server/configuration were removed after verification. No real
 The complete frontend suite passes: **43 browser tests**, plus **2 unit tests**. All **142 backend tests pass on PostgreSQL** with the same migration-before-tests setup as CI. All **142 also pass on SQLite**. PostgreSQL migration rollback to `0001_articles` and upgrade back to head pass on the disposable test database.
 
 The PostgreSQL run exposed a test fixture bug: `profile_client` inserted goal types already created by migrations. It now checks for each existing key before inserting. This preserves SQLite setup and fixes duplicate-key failures in PostgreSQL CI without changing application behavior.
+
+The first published CI run confirmed that backend, container and infrastructure jobs pass. Its frontend job exposed a Node-version mismatch: `node --test src/tests` treats the directory as a module path in Node 22. The unit-test script now uses `node --test`, which discovers the existing `*.test.mjs` files automatically.
 
 The user explicitly authorized the merge commit and push on 2026-10-03. The resolution is published as an ordinary branch update to `session-execution-update-feature`, without force-pushing. CI and conflict status can be checked on [PR #16](https://github.com/drgslx/fitness-app/pull/16).
 

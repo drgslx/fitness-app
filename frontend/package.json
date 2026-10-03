@@ -5,7 +5,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "test": "npm run test:unit",
-    "test:unit": "node --test src/tests",
+    "test:unit": "node --test",
     "test:e2e": "playwright test -c playwright.config.js"
   },
   "dependencies": {
