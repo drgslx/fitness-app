@@ -7,12 +7,41 @@ const baseProfile = {
 };
 const missing = { available: false, reason: "Completeaza profilul si adauga o greutate masurata.", warnings: [], options: [] };
 
+function profileAge(profile) {
+  return Number(today.slice(0, 4)) - Number(profile.birth_date.slice(0, 4)) -
+    Number(today.slice(5) < profile.birth_date.slice(5));
+}
+
+function refreshEstimate(state) {
+  const weight = state.weights[0];
+  if (!state.profile || !weight) {
+    state.recommendation = missing;
+    state.active_goal = null;
+    return;
+  }
+  // Keep the mocked API snapshot coherent with its profile, weight and current
+  // session level. These browser tests assert presentation, not this formula.
+  const profile = state.profile;
+  const factors = { sedentary: 1.2, light: 1.375, moderate: 1.55, high: 1.725, very_high: 1.9 };
+  const rest = Math.round(10 * weight.weight_kg + 6.25 * profile.height_cm - 5 * profileAge(profile) + (profile.sex === "male" ? 5 : -161));
+  const maintenance = Math.round(rest * factors[state.activity_summary.activity_level]);
+  const adjustment = profile.goal === "lose" ? -profile.deficit_percent : profile.goal === "gain" ? profile.surplus_percent : 0;
+  const target = Math.round(maintenance * (1 + adjustment / 100));
+  state.recommendation = {
+    available: true, effective_goal: profile.goal, weight_day: weight.day,
+    resting_kcal: rest, maintenance_kcal: maintenance, target_kcal: target, maintenance_source: "sessions",
+    adjustment_percent: adjustment, warnings: [], options: [{ percent: adjustment, calories: target, allowed: true }],
+  };
+  state.active_goal = { calories: target, protein: 0, source: "profile", effective_from: today };
+}
+
 async function setup(page, existing = false, overrides = {}, mockAuth = true, activity = {}) {
   const state = { today, profile: existing ? { ...baseProfile, ...overrides } : null, weights: [],
     recommendation: missing, active_goal: null, weight_change_kg: null,
-    activity_summary: { source: "initial_fallback", activity_level: overrides.activity_level || baseProfile.activity_level,
-      eligible_sessions_7: 0, start: "2026-09-20", end: today, min_duration_minutes: 15, ...activity } };
+    activity_summary: { source: "sessions", activity_level: "sedentary",
+      eligible_sessions_7: 0, start: "2026-09-20", end: today, min_duration_minutes: 15, missing_duration_sessions: 0, ...activity } };
   const requests = [];
+  let nextWeightId = 305;
   await page.route("**/api/v1/energy", (route) => route.fulfill({ json: { available: false, reason: "Completeaza profilul" } }));
   // Test-only module interception: no authentication bypass exists in application code.
   if (mockAuth) await page.route(/\/src\/auth\.jsx(?:\?.*)?$/, (route) => route.fulfill({ contentType: "application/javascript", body: `
@@ -25,30 +54,34 @@ async function setup(page, existing = false, overrides = {}, mockAuth = true, ac
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (path.endsWith("/summary")) return route.fulfill({ json: {
-      sessions: 3, sports: [{ name: "Sala", sessions: 3 }], entries: 6, logged_days: 2,
+      sessions: Math.max(3, state.activity_summary.eligible_sessions_7),
+      sports: [{ name: "Sala", sessions: Math.max(3, state.activity_summary.eligible_sessions_7) }], entries: 6, logged_days: 2,
       calories: 4100, average_calories: 2050, average_difference: -100, days_with_target: 2,
     } });
     if (request.method() === "PUT") {
       const payload = request.postDataJSON();
       requests.push({ path, payload });
+      if (path.endsWith("/profile") && state.profile &&
+          ["sex", "birth_date", "activity_level"].some(key => payload[key] !== state.profile[key]))
+        return route.fulfill({ status: 422, json: { detail: "Datele initiale ale profilului nu pot fi schimbate." } });
       if (path.endsWith("/weights")) {
-        state.weights = [{ id: 1, ...payload }];
-        state.recommendation = {
-          available: true, effective_goal: "maintain", weight_day: payload.day,
-          resting_kcal: 1775, maintenance_kcal: 2751, target_kcal: 2751,
-          adjustment_percent: 0, warnings: [], options: [{ percent: 0, calories: 2751, allowed: true }],
-        };
-        state.active_goal = { calories: 2751, protein: 0, source: "profile", effective_from: today };
+        state.weights = [{ id: state.weights.find(item => item.day === payload.day)?.id || nextWeightId++, ...payload }];
       } else {
         state.profile = payload;
-        if (state.activity_summary.source === "initial_fallback") state.activity_summary.activity_level = payload.activity_level;
       }
+      refreshEstimate(state);
     }
     if (request.method() === "DELETE") {
-      state.weights = [];
+      const id = Number(path.split("/").at(-1));
+      if (!state.weights.some(item => item.id === id))
+        return route.fulfill({ status: 404, json: { detail: "Masuratoare inexistenta" } });
+      state.weights = state.weights.filter(item => item.id !== id);
       state.recommendation = missing;
       state.active_goal = null;
     }
+    const age = state.profile ? profileAge(state.profile) : null;
+    state.edit_permissions = { sex: !state.profile, birth_date: !state.profile, height_cm: !state.profile || age < 18,
+      activity_level: !state.profile, goal: true };
     return route.fulfill({ json: state });
   });
   return requests;
@@ -63,7 +96,7 @@ test("profile goal controls, save, weight correction, deletion and navigation", 
   await page.getByLabel("Sex folosit in calcul").selectOption("male");
   await page.getByLabel("Data nasterii").fill("1996-01-01");
   await page.getByLabel("Inaltime (cm)").fill("176");
-  await page.getByLabel("Nivel de activitate ales manual").selectOption("light");
+  await page.getByLabel("Nivel de activitate la inregistrare").selectOption("light");
   await expect(page.getByLabel("Deficit caloric")).toHaveCount(0);
   await expect(page.getByLabel("Surplus caloric")).toHaveCount(0);
   await page.getByLabel("Obiectiv", { exact: true }).selectOption("lose");
@@ -174,7 +207,7 @@ test("a minor can update height while identity stays locked", async ({ page }) =
   await page.getByRole("button", { name: "Editeaza profilul", exact: true }).click();
   await expect(page.getByLabel("Inaltime (cm)")).toBeEnabled();
   await expect(page.getByLabel("Data nasterii")).toBeDisabled();
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toBeEnabled();
+  await expect(page.getByLabel("Nivel de activitate la inregistrare")).toHaveCount(0);
   await page.getByLabel("Inaltime (cm)").fill("180");
   await page.getByRole("button", { name: "Salveaza profilul", exact: true }).click();
   await expect(page.getByRole("button", { name: "Editeaza profilul", exact: true })).toBeVisible();
@@ -188,103 +221,78 @@ test("height becomes locked on the eighteenth birthday", async ({ page }) => {
   await expect(page.getByLabel("Inaltime (cm)")).toBeDisabled();
 });
 
-test("manual activity can be saved without eligible sessions and identity stays locked", async ({ page }) => {
-  const requests = await setup(page, true);
+test("zero current sessions stay sedentary and signup activity stays immutable", async ({ page }) => {
+  const requests = await setup(page, true, { activity_level: "high" });
   await page.goto("/profile");
   await page.getByRole("button", { name: "Editeaza profilul", exact: true }).click();
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toBeEnabled();
-  await expect(page.getByLabel("Sex folosit in calcul")).toBeDisabled();
+  await expect(page.getByLabel("Nivel de activitate la inregistrare")).toHaveCount(0);
+  await expect(page.getByLabel("Nivel de activitate curent", { exact: true })).toHaveValue("Sedentar \u2014 0 antrenamente / saptamana");
+  await expect(page.getByLabel("Nivel de activitate curent", { exact: true })).toHaveJSProperty("readOnly", true);
+  await expect(page.getByLabel("Nivel ales la inregistrare")).toContainText("Foarte activ");
   await expect(page.getByLabel("Data nasterii")).toBeDisabled();
-  await expect(page.getByLabel("Inaltime (cm)")).toBeDisabled();
-  await expect(page.getByLabel("Activitatea din ultimele 7 zile")).toContainText("0 antrenamente finalizate de peste 15 minute");
-  await page.getByLabel("Nivel de activitate ales manual").selectOption("high");
-  await page.getByRole("button", { name: "Salveaza profilul", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Editeaza profilul", exact: true })).toBeVisible();
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toHaveValue("high");
-  await expect(page.getByLabel("Activitatea din ultimele 7 zile")).toContainText("Nivel ales manual: Foarte activ");
-  expect(requests[0].payload).toMatchObject({ ...baseProfile, activity_level: "high" });
-});
-
-test("automatic session level locks activity without replacing saved manual preference", async ({ page }) => {
-  const requests = await setup(page, true, { activity_level: "high" }, true, {
-    source: "sessions", activity_level: "light", eligible_sessions_7: 2,
-  });
-  await page.goto("/profile");
-  await page.getByRole("button", { name: "Editeaza profilul", exact: true }).click();
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toBeDisabled();
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toHaveValue("high");
-  const summary = page.getByLabel("Activitatea din ultimele 7 zile");
-  await expect(summary).toContainText("Nivel stabilit automat: Usor activ — 1–2 antrenamente");
-  await expect(summary).toContainText("2 antrenamente finalizate de peste 15 minute");
-  await expect(summary).toContainText("2026-09-20 – 2026-09-26");
-  await expect(page.getByText("Baza: nivelul stabilit dupa antrenamentele din ultimele 7 zile", { exact: true })).toBeVisible();
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: test.info().outputPath("profile-automatic-activity.png"), fullPage: true });
   await page.getByLabel("Obiectiv", { exact: true }).selectOption("gain");
   await page.getByRole("button", { name: "Salveaza profilul", exact: true }).click();
   await expect(page.getByRole("button", { name: "Editeaza profilul", exact: true })).toBeVisible();
-  expect(requests[0].payload.activity_level).toBe("high");
-  expect(requests[0].payload.goal).toBe("gain");
+  expect(requests[0].payload).toMatchObject({ activity_level: "high", goal: "gain" });
 });
 
-test("daily activity average remains the recommendation source ahead of session classification", async ({ page }) => {
+for (const [count, level, label] of [[4, "moderate", "Moderat"], [7, "very_high", "Extrem de activ"]])
+  test(`${count} completed sessions determine the current activity instead of the signup selection`, async ({ page }) => {
+    const requests = await setup(page, true, { activity_level: "high" }, true, {
+      activity_level: level, eligible_sessions_7: count,
+    });
+    await page.goto("/profile");
+    await page.getByRole("button", { name: "Editeaza profilul", exact: true }).click();
+    await expect(page.getByLabel("Nivel de activitate curent", { exact: true })).toHaveValue(new RegExp(label));
+    await expect(page.getByLabel("Nivel ales la inregistrare")).toContainText("Foarte activ");
+    await expect(page.getByLabel("Nivel de activitate la inregistrare")).toHaveCount(0);
+    const summary = page.getByLabel("Activitatea din ultimele 7 zile");
+    await expect(summary).toContainText(`Nivel stabilit automat: ${label}`);
+    await expect(summary).toContainText(`${count} antrenamente finalizate de peste 15 minute`);
+    await expect(summary).toContainText("2026-09-20 \u2013 2026-09-26");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: test.info().outputPath("profile-current-activity.png"), fullPage: true });
+    await page.getByLabel("Obiectiv", { exact: true }).selectOption("gain");
+    await page.getByRole("button", { name: "Salveaza profilul", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Editeaza profilul", exact: true })).toBeVisible();
+    expect(requests[0].payload).toMatchObject({ activity_level: "high", goal: "gain" });
+  });
+
+test("completed daily data does not replace the session based calorie recommendation", async ({ page }) => {
   await setup(page, true);
   await page.route("**/api/v1/profile", route => route.fulfill({ json: {
     today, profile: baseProfile, weights: [], active_goal: null,
-    recommendation: { ...missing, maintenance_source: "activity_average" },
-    activity_summary: { source: "sessions", activity_level: "light", eligible_sessions_7: 2,
-      start: "2026-09-20", end: today, min_duration_minutes: 15 },
+    recommendation: { available: true, maintenance_source: "sessions", complete_days_7: 7,
+      effective_goal: "maintain", weight_day: today, resting_kcal: 1775, maintenance_kcal: 2751,
+      target_kcal: 2751, adjustment_percent: 0, warnings: [], options: [] },
+    activity_summary: { source: "sessions", activity_level: "moderate", eligible_sessions_7: 4,
+      start: "2026-09-20", end: today, min_duration_minutes: 15, missing_duration_sessions: 0 },
     edit_permissions: { sex: false, birth_date: false, height_cm: false, activity_level: false, goal: true },
   } }));
   await page.goto("/profile");
-  await expect(page.getByLabel("Activitatea din ultimele 7 zile")).toContainText("Nivel stabilit automat: Usor activ");
-  await expect(page.getByText("Baza: media activitatii inregistrate", { exact: true })).toBeVisible();
-  await expect(page.getByText("Baza: nivelul stabilit dupa antrenamentele din ultimele 7 zile", { exact: true })).toHaveCount(0);
+  const recommendation = page.locator('section[aria-labelledby="profile-estimate-title"]');
+  await expect(recommendation).toContainText("Baza: nivelul stabilit dupa antrenamentele din ultimele 7 zile");
+  await expect(recommendation).toContainText("2.751");
+  await expect(recommendation).not.toContainText("media activitatii");
 });
 
-test("manual activity becomes editable again when the seven day session window empties", async ({ page }) => {
-  await setup(page, true, { activity_level: "high" }, true, {
-    source: "sessions", activity_level: "light", eligible_sessions_7: 2,
-  });
+test("refreshing activity to zero keeps signup immutable and preserves the goal draft", async ({ page }) => {
+  await setup(page, true, { activity_level: "high" }, true, { activity_level: "moderate", eligible_sessions_7: 4 });
   await page.goto("/profile");
   await page.getByRole("button", { name: "Editeaza profilul", exact: true }).click();
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toBeDisabled();
+  await page.getByLabel("Obiectiv", { exact: true }).selectOption("gain");
   await page.route("**/api/v1/profile", route => route.fulfill({ json: {
-    today, profile: { ...baseProfile, activity_level: "high" }, weights: [],
-    recommendation: missing, active_goal: null,
-    activity_summary: { source: "initial_fallback", activity_level: "high", eligible_sessions_7: 0,
-      start: "2026-09-20", end: today, min_duration_minutes: 15 },
-    edit_permissions: { sex: false, birth_date: false, height_cm: false, activity_level: true, goal: true },
+    today, profile: { ...baseProfile, activity_level: "high" }, weights: [], recommendation: missing, active_goal: null,
+    activity_summary: { source: "sessions", activity_level: "sedentary", eligible_sessions_7: 0,
+      start: "2026-09-20", end: today, min_duration_minutes: 15, missing_duration_sessions: 3 },
+    edit_permissions: { sex: false, birth_date: false, height_cm: false, activity_level: false, goal: true },
   } }));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toBeEnabled();
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toHaveValue("high");
-  await expect(page.getByLabel("Activitatea din ultimele 7 zile")).toContainText("Nivel ales manual: Foarte activ");
-  await expect(page.getByLabel("Data nasterii")).toBeDisabled();
-});
-
-test("a new eligible session discards a manual activity draft while preserving the goal draft", async ({ page }) => {
-  const requests = await setup(page, true);
-  await page.goto("/profile");
-  await page.getByRole("button", { name: "Editeaza profilul", exact: true }).click();
-  await page.getByLabel("Nivel de activitate ales manual").selectOption("very_high");
-  await page.getByLabel("Obiectiv", { exact: true }).selectOption("gain");
-  await page.route("**/api/v1/profile", route => {
-    if (route.request().method() !== "GET") return route.fallback();
-    return route.fulfill({ json: {
-      today, profile: baseProfile, weights: [], recommendation: missing, active_goal: null,
-      activity_summary: { source: "sessions", activity_level: "light", eligible_sessions_7: 1,
-        start: "2026-09-20", end: today, min_duration_minutes: 15 },
-      edit_permissions: { sex: false, birth_date: false, height_cm: false, activity_level: false, goal: true },
-    } });
-  });
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toBeDisabled();
-  await expect(page.getByLabel("Nivel de activitate ales manual")).toHaveValue("moderate");
+  await expect(page.getByLabel("Nivel de activitate curent", { exact: true })).toHaveValue(/Sedentar/);
+  await expect(page.getByLabel("Nivel ales la inregistrare")).toContainText("Foarte activ");
+  await expect(page.getByLabel("Nivel de activitate la inregistrare")).toHaveCount(0);
   await expect(page.getByLabel("Obiectiv", { exact: true })).toHaveValue("gain");
-  await page.getByRole("button", { name: "Salveaza profilul", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Editeaza profilul", exact: true })).toBeVisible();
-  expect(requests[0].payload).toMatchObject({ activity_level: "moderate", goal: "gain" });
+  await expect(page.getByLabel("Activitatea din ultimele 7 zile")).toContainText("3 antrenamente fara durata nu intra");
 });
 
 async function setupSignup(page, existing = false) {

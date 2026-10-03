@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { barcodeFromText } from '../src/components/foods/barcode.js';
+import { barcodeFromText } from '../components/foods/barcode.js';
 
 test('EAN, UPC, OFF URLs and GS1 product identifiers', () => {
   for (const code of ['012345678905', '5941234567890', '12345678']) assert.equal(barcodeFromText(code), code);

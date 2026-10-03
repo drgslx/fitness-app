@@ -31,7 +31,9 @@ def test_workouts_owned_and_completion_snapshot(tracker):
     assert tracker.put(f"/api/v1/workouts/{wid}",json=body).status_code==200
     query="?start=2026-09-21&end=2026-09-27"
     logs=tracker.get("/api/v1/workout-history"+query).json()
-    assert len(logs)==1 and logs[0]["snapshot"]["title"]=="Strength"
+    assert len(logs)==1 and logs[0]["snapshot"]["title"]=="Changed"
+    assert logs[0]["snapshot"]["exercises"][0]["sets"] == 3
+    assert logs[0]["snapshot"]["exercises"][0]["reps"] == 8
     app.dependency_overrides[current_user]=lambda:{"uid":"bob"}
     assert tracker.get("/api/v1/workouts"+query).json()==[]
     assert tracker.put(f"/api/v1/workouts/{wid}",json=body).status_code==404

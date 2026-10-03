@@ -331,8 +331,8 @@ export default function EnergyPanel({ today, revision, onSaved }) {
           <p>
             Pentru estimarea fara date zilnice, nivelul de activitate este ales
             din sesiunile efectuate in ultimele 7 zile. Numaram doar sesiunile
-            de peste 15 minute. Cand nu exista astfel de sesiuni, folosim nivelul
-            manual din profil, pe care il poti modifica prin Editeaza profilul.
+            de peste 15 minute. Cand nu exista astfel de sesiuni, nivelul este
+            Sedentar. Sesiunile fara durata nu intra in stabilirea nivelului.
           </p>
           <p>
             Cu date folosim repaus + activitate neta + o ipoteza de 10% din

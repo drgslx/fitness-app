@@ -19,13 +19,16 @@ def test_editing_workout_creates_independent_template_and_updates_completion():
     )
     Base.metadata.create_all(engine)
     with Session(engine) as db:
-        db.add(SportType(id=45, user_id="owner", name="Sala"))
+        sport = SportType(user_id="owner", name="Sala")
+        db.add(sport)
         db.flush()
-        db.add(ExerciseDefinition(id=46, user_id="owner", sport_type_id=45, name="Ramat vertical", tracking_type="strength"))
+        definition = ExerciseDefinition(user_id="owner", sport_type_id=sport.id,
+                                        name="Ramat vertical", tracking_type="strength")
+        db.add(definition)
         db.flush()
-        original = [{"exercise_id": 46, "name": "Ramat vertical", "sets": 2,
+        original = [{"exercise_id": definition.id, "name": "Ramat vertical", "sets": 2,
                      "reps": 8, "weight_kg": 70, "minutes": None, "notes": ""},
-                    {"exercise_id": 46, "name": "Ramat vertical", "sets": 1,
+                    {"exercise_id": definition.id, "name": "Ramat vertical", "sets": 1,
                      "reps": 8, "weight_kg": 20, "minutes": None, "notes": ""}]
         workout = Workout(user_id="owner", day=date(2026, 9, 23),
                           title="Upper body", sport="Sala", notes="",

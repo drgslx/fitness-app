@@ -1,7 +1,7 @@
 import React from "react";
 import { activityOptions, goalLabels } from "./constants";
 
-export default function PersonalProfileFields({ form, change, today, permissions, registration = false }) {
+export default function PersonalProfileFields({ form, change, today, permissions, registration = false, initialSetup = false, activitySummary }) {
   const allowed = (key) => permissions?.[key] !== false;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -35,8 +35,8 @@ export default function PersonalProfileFields({ form, change, today, permissions
           ))}
         </select>
       </label>
-      <label className="sm:col-span-2">
-        {registration ? "Nivel de activitate" : "Nivel de activitate ales manual"}
+      {registration || initialSetup ? <label className="sm:col-span-2">
+        Nivel de activitate la inregistrare
         <select required value={form.activity_level} disabled={!allowed("activity_level")}
           onChange={(e) => change("activity_level", e.target.value)}>
           <option value="">Alege nivelul aproximativ</option>
@@ -44,7 +44,17 @@ export default function PersonalProfileFields({ form, change, today, permissions
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
-      </label>
+      </label> : <>
+        <label className="sm:col-span-2">
+          Nivel de activitate curent
+          <input readOnly value={activityOptions.find(([value]) => value === activitySummary?.activity_level)?.[1] || "Se determina din antrenamente"} />
+        </label>
+        <div className="sm:col-span-2 text-sm text-muted" aria-label="Nivel ales la inregistrare">
+          <p className="mb-1">Nivel ales la inregistrare</p>
+          <p className="mb-1">{activityOptions.find(([value]) => value === form.activity_level)?.[1]}</p>
+          <p className="text-xs">Valoare istorica, aleasa o singura data la crearea profilului.</p>
+        </div>
+      </>}
     </div>
   );
 }

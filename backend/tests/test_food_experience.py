@@ -135,7 +135,7 @@ def test_excluded_code_cannot_be_seeded_by_cli(tmp_path):
     path = tmp_path / 'off.jsonl.gz'
     with gzip.open(path, 'wt') as stream: stream.write(json.dumps(PRODUCT) + '\n')
     for extra in ([], ['--refresh']):
-        subprocess.run([sys.executable, '-m', 'app.scripts.import_off', str(path), *extra],
+        subprocess.run([sys.executable, '-m', 'scripts.import_off', str(path), *extra],
             env={**os.environ, 'DATABASE_URL': str(engine.url)}, cwd=Path(__file__).resolve().parents[1], check=True, capture_output=True)
     with Session(engine) as db: assert list(db.scalars(select(Food))) == []
     engine.dispose()
