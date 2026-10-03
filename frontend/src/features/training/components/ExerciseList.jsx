@@ -1,3 +1,4 @@
+import Button from "../../../components/ui/Button";
 import React from "react";
 
 const trackingLabels = {
@@ -23,26 +24,25 @@ export default function ExerciseList({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
+    <div className="card-grid">
       {exercises.map((exercise) => (
-        <article className="overflow-hidden rounded-2xl border border-white/10 bg-surface shadow-lg transition-colors hover:border-accent/30 p-4" key={exercise.id}>
+        <article className="card p-4" key={exercise.id}>
           <strong>{exercise.name}</strong>
 
           <p>
-            {trackingLabels[exercise.tracking_type] ??
-              exercise.tracking_type}
+            {trackingLabels[exercise.tracking_type] ?? exercise.tracking_type}
           </p>
 
           {exercise.is_system ? (
             <small>Exercitiu standard</small>
           ) : (
-            <button
+            <Button
               type="button"
               disabled={disabled}
               onClick={() => onArchive(exercise)}
             >
               Arhiveaza
-            </button>
+            </Button>
           )}
         </article>
       ))}

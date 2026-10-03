@@ -3,8 +3,8 @@ from datetime import timedelta
 from sqlalchemy import select, or_, and_
 from app.models.activity import DailyActivity
 from app.models.profile import BodyWeight
-from app.models.tracking import Workout, WorkoutLog, SportType
 from app.services.activity_catalog import CATALOG, net_calories
+from app.services.training_activity import active_completed_workouts, summarize_activity
 
 VERSION = "daily-energy-v1"
 # Explicit modelling assumptions, not measurements or a validated adaptive TDEE.
@@ -22,26 +22,17 @@ def energy_report(db, profile, today, days=28):
         DailyActivity.user_id == uid, DailyActivity.day.between(start, today)))}
     weights = list(db.scalars(select(BodyWeight).where(BodyWeight.user_id == uid,
                    BodyWeight.day <= today).order_by(BodyWeight.day)))
-    # Prefer a real sport ID; legacy rows retain the report's name-based compatibility.
-    sports = list(db.scalars(select(SportType).where(SportType.user_id.in_([uid, "__system__"]))))
-    sport_by_id = {s.id: s for s in sports}
-    plans = db.scalars(select(Workout).join(WorkoutLog, WorkoutLog.workout_id == Workout.id).where(
-        Workout.user_id == uid, WorkoutLog.user_id == uid, Workout.day.between(start, today))).unique().all()
+    plans = active_completed_workouts(db, uid, start - timedelta(days=6), today)
     by_day = {}
     for plan in plans:
-        matches = [s for s in sports if s.name == plan.sport]
-        if plan.sport_type_id is not None:
-            sport = sport_by_id.get(plan.sport_type_id)
-            if sport is None or not sport.is_active: continue
-        elif matches and not any(s.is_active for s in matches):
-            continue
         by_day.setdefault(plan.day, []).append(plan)
     output = []
     for offset in range(days):
         day = start + timedelta(days=offset)
         observation = movements.get(day)
         weight = next((w for w in reversed(weights) if w.day <= day), None)
-        base = estimate(profile, weight, day)
+        daily_activity = summarize_activity(profile, day, plans)
+        base = estimate(profile, weight, day, activity_level_override=daily_activity["activity_level"])
         sessions = by_day.get(day, [])
         issues = []
         entries = []
@@ -79,6 +70,7 @@ def energy_report(db, profile, today, days=28):
         thermic = subtotal * THERMIC_FRACTION / (1 - THERMIC_FRACTION) if subtotal is not None else None
         daily_total = round(subtotal + thermic) if subtotal is not None else base.get("maintenance_kcal")
         output.append(dict(day=day.isoformat(), available=base["available"], reason=base.get("reason"),
+            activity_summary=daily_activity,
             mode="recorded" if has_data else "fallback", complete=complete,
             observation=dict(steps=steps, steps_scope=observation.steps_scope, complete=observation.complete) if observation else None,
             resting_kcal=rest, weight_day=weight.day.isoformat() if weight else None,
@@ -94,6 +86,7 @@ def energy_report(db, profile, today, days=28):
     all_complete = sum(d["complete"] for d in output)
     usable = len(completed) >= 4
     return dict(method=VERSION, today=output[-1], days=output,
+        activity_summary=summarize_activity(profile, today, plans),
         week=dict(start=week[0]["day"], end=week[-1]["day"], complete_days=len(completed),
                   average_maintenance_kcal=average,
                   average_steps=round(sum(d["steps"] for d in completed) / len(completed)) if completed else None,

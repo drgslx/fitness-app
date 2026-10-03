@@ -1,39 +1,243 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap");
-@import "tailwindcss";
+@import "tailwindcss" source("./");
 
 @theme {
   --color-ink: #09100c;
   --color-surface: #111b15;
   --color-raised: #172c20;
   --color-accent: #72f29c;
-  --color-muted: #9baba1;
+  --color-accent-hover: #8cf7ac;
+  --color-muted: #a6b8ad;
   --color-copy: #e8eee9;
+  --color-field: #09130e;
+  --color-danger: #ffaaa3;
+  --color-danger-surface: #321a18;
   --font-sans: "DM Sans", sans-serif;
   --font-display: "Space Grotesk", sans-serif;
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
 }
 
 @layer base {
-  html { @apply min-h-full bg-ink; }
-  body { @apply min-h-screen min-w-80 bg-ink font-sans text-copy antialiased; background-image: radial-gradient(circle at 85% 0%, #173326, transparent 34%), radial-gradient(circle at 0% 65%, #10251a, transparent 30%); }
-  main { @apply mx-auto w-[calc(100%-28px)] max-w-[1180px] py-6 md:w-[calc(100%-40px)] md:py-8; }
-  h1, h2, h3, h4 { @apply font-display text-copy; }
-  h1 { @apply mb-3 text-4xl leading-tight font-bold md:text-5xl; }
-  h2 { @apply mb-2 text-2xl font-bold md:text-3xl; }
-  h3 { @apply mb-2 text-xl font-semibold; }
-  p { @apply leading-relaxed; }
-  a { @apply text-accent hover:text-[#8cf7ac] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent; }
-  form { @apply grid gap-3; }
-  label { @apply grid min-w-0 gap-1 text-sm font-semibold text-[#bdc9c1]; }
-  input, textarea, select { @apply min-h-10 w-full min-w-0 rounded-lg border border-white/15 bg-[#09130e] px-3 py-2 text-copy outline-none transition-colors placeholder:text-[#738077] hover:border-[#365646] focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-50; }
-  textarea { @apply min-h-24 resize-y; }
-  input[type="date"] { @apply border-[#d9dedb] bg-white text-[#111713] scheme-light; }
-  input[type="checkbox"] { @apply min-h-0 w-auto accent-accent; }
-  button { @apply min-h-10 cursor-pointer rounded-lg border border-accent bg-accent px-4 py-2 font-semibold text-ink transition-colors hover:bg-[#8cf7ac] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50; }
-  fieldset { @apply grid min-w-0 gap-3 rounded-xl border border-white/15 p-3; }
-  table { @apply w-full border-collapse bg-[#0c1710]; }
-  th, td { @apply border-b border-white/10 px-2.5 py-2 text-left align-top; }
-  th { @apply text-xs font-semibold uppercase tracking-wide text-accent; }
-  td { @apply text-[#dce5df]; }
-  tbody tr { @apply hover:bg-[#14241b]; }
-  [role="status"] { @apply rounded-lg border border-accent/25 bg-[#12271a] px-3 py-2 text-[#baf9cd]; }
+  html {
+    @apply min-h-full bg-ink;
+    color-scheme: dark;
+  }
+  body {
+    @apply min-h-screen min-w-0 bg-ink font-sans text-copy antialiased;
+    background-image: radial-gradient(
+      circle at 85% 0%,
+      #173326,
+      transparent 34%
+    );
+  }
+  main {
+    @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-7 2xl:max-w-[90rem];
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display text-copy;
+    overflow-wrap: anywhere;
+  }
+  h1 {
+    @apply mb-3 text-3xl leading-tight font-bold sm:text-4xl lg:text-5xl;
+  }
+  h2 {
+    @apply mb-2 text-xl leading-tight font-bold sm:text-2xl;
+  }
+  h3 {
+    @apply mb-2 text-lg font-semibold;
+  }
+  p {
+    @apply leading-relaxed;
+    overflow-wrap: anywhere;
+  }
+  a {
+    @apply text-accent hover:text-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent;
+  }
+  form {
+    @apply grid min-w-0 gap-3;
+  }
+  label {
+    @apply grid min-w-0 gap-1.5 text-sm font-semibold text-copy;
+  }
+  input,
+  textarea,
+  select {
+    @apply min-h-11 w-full min-w-0 max-w-full rounded-lg border border-white/15 bg-field px-3 py-2 text-base text-copy outline-none transition-colors placeholder:text-muted hover:border-accent/40 focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  textarea {
+    @apply min-h-24 resize-y;
+  }
+  input[type="date"] {
+    @apply border-white/20;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    @apply min-h-4 size-4 shrink-0 accent-accent;
+  }
+  input[type="file"] {
+    @apply overflow-hidden text-sm;
+  }
+  button {
+    @apply cursor-pointer font-semibold disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  fieldset {
+    @apply grid min-w-0 gap-3 rounded-xl border border-white/15 p-3;
+  }
+  table {
+    @apply w-full border-collapse text-sm;
+  }
+  caption {
+    @apply pb-3 text-left font-semibold text-copy;
+  }
+  th,
+  td {
+    @apply border-b border-white/10 px-3 py-2.5 text-left align-top;
+  }
+  th {
+    @apply text-xs font-semibold uppercase tracking-wide text-accent;
+  }
+  td {
+    @apply text-copy;
+    overflow-wrap: anywhere;
+  }
+  tbody tr {
+    @apply hover:bg-raised/50;
+  }
+  img,
+  video,
+  svg {
+    @apply max-w-full;
+  }
+  summary {
+    @apply cursor-pointer rounded-md py-2 focus-visible:outline-2 focus-visible:outline-accent;
+  }
+  [hidden] {
+    display: none !important;
+  }
+  [role="status"] {
+    @apply rounded-lg border border-accent/25 bg-raised px-3 py-2 text-copy;
+  }
+  [role="alert"] {
+    @apply rounded-lg border border-red-400/30 bg-danger-surface px-3 py-2 text-danger;
+  }
+  :where(section, article, header, nav, figure, fieldset) {
+    min-width: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-center text-sm leading-5 font-semibold no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50;
+    overflow-wrap: anywhere;
+  }
+  .btn-primary {
+    @apply border-accent bg-accent text-ink hover:bg-accent-hover hover:text-ink;
+  }
+  .btn-secondary {
+    @apply border-white/20 bg-raised text-copy hover:border-accent/60 hover:bg-[#204333] hover:text-white;
+  }
+  .btn-danger {
+    @apply border-red-400/40 bg-danger-surface text-danger hover:border-red-300 hover:bg-[#46211e] hover:text-red-100;
+  }
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-accent hover:bg-accent/10 hover:text-accent-hover;
+  }
+  .panel {
+    @apply my-4 flex min-w-0 flex-col gap-5 rounded-xl border border-white/10 bg-surface p-4 sm:p-5;
+  }
+  .card {
+    @apply min-w-0 overflow-hidden rounded-xl border border-white/10 bg-surface transition-colors hover:border-accent/30;
+  }
+  .card-grid {
+    @apply grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3;
+  }
+  .form-grid {
+    @apply grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2;
+  }
+  .search-row {
+    @apply my-4 flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-end;
+  }
+  .search-row > label {
+    @apply min-w-0 flex-1;
+  }
+  .actions {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  .section-tabs {
+    @apply my-3 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-white/10 bg-surface p-1.5;
+    scrollbar-width: thin;
+  }
+  .tab {
+    @apply inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm text-copy no-underline transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent;
+  }
+  .tab-active {
+    @apply border-accent bg-accent text-ink hover:bg-accent-hover hover:text-ink;
+  }
+  .table-scroll {
+    @apply my-3 w-full min-w-0 max-w-full overflow-x-auto rounded-lg focus-visible:outline-2 focus-visible:outline-accent;
+  }
+  .table-scroll table {
+    @apply min-w-[560px];
+  }
+  .data-row {
+    @apply grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3 border-b border-white/10 py-2 last:border-0;
+  }
+  .metric {
+    @apply min-w-0 rounded-xl border border-white/10 bg-raised/60 p-3;
+  }
+  .metric-value {
+    @apply my-1 block text-xl leading-snug font-bold text-accent sm:text-2xl;
+    overflow-wrap: anywhere;
+  }
+  .eyebrow {
+    @apply mb-2 block text-xs font-bold uppercase tracking-widest text-accent;
+  }
+  .notice-error {
+    @apply rounded-lg border border-red-400/30 bg-danger-surface px-3 py-2 text-danger;
+  }
+  .empty-state {
+    @apply my-3 rounded-xl border border-dashed border-white/20 p-4 text-sm text-muted;
+  }
+  .nav-link {
+    @apply flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm text-copy no-underline hover:bg-raised hover:text-white focus-visible:outline-2 focus-visible:outline-accent;
+  }
+  .nav-link-active {
+    @apply bg-accent text-ink hover:bg-accent-hover hover:text-ink;
+  }
+  .text-link {
+    @apply min-h-11 border-0 bg-transparent px-0 py-2 text-left text-accent underline-offset-4 hover:bg-transparent hover:text-accent-hover hover:underline;
+  }
+}
+
+/* Keep mobile sections distinct and controls comfortable to touch. */
+@media (max-width: 639px) {
+  main > header { margin-bottom: 1.5rem; }
+  main h1 { font-size: 1.875rem; }
+  .section-tabs { margin-block: 1.25rem; gap: .25rem; }
+  .tab { padding-inline: .875rem; }
+  .actions { align-items: stretch; gap: .75rem; }
+  .actions > .btn { flex: 1 1 8rem; }
+  .data-row { grid-template-columns: minmax(0, 1fr); gap: .375rem; padding-block: .875rem; }
+  .diary-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diary-metrics > :last-child { grid-column: 1 / -1; }
+  .diary-metrics .metric-value { font-size: 1.125rem; }
+  .diary-entry-actions > .btn { flex: 1; min-height: 44px; }
+  .food-result-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .food-result-actions > .btn { width: 100%; }
 }

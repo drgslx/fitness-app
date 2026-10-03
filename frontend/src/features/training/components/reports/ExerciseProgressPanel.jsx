@@ -36,11 +36,11 @@ function ExerciseResults({ sport, exerciseKey, period, anchor }) {
     );
   if (!report) return <p role="status">Se calculeaza progresul...</p>;
   const available = Object.entries(report.metrics).filter(
-    ([, value]) => value.current !== null || value.previous !== null
+    ([, value]) => value.current !== null || value.previous !== null,
   );
   const chosen = available.some(([key]) => key === metric)
     ? metric
-    : available[0]?.[0] ?? "weight_kg";
+    : (available[0]?.[0] ?? "weight_kg");
   const summary = report.metrics[chosen];
   const difference = summary.delta;
   return (
@@ -60,7 +60,7 @@ function ExerciseResults({ sport, exerciseKey, period, anchor }) {
               <option key={key} value={key}>
                 {value.label}
               </option>
-            )
+            ),
           )}
         </select>
       </label>
@@ -101,7 +101,7 @@ function ExerciseResults({ sport, exerciseKey, period, anchor }) {
         {difference === null
           ? "Nu sunt suficiente valori in ambele perioade pentru comparatie."
           : `${summary.label}: ${difference > 0 ? "+" : ""}${formatValue(
-              difference
+              difference,
             )} ${summary.unit} fata de ${
               period === "month" ? "luna" : "saptamana"
             } precedenta.`}{" "}
@@ -116,7 +116,7 @@ function ExerciseResults({ sport, exerciseKey, period, anchor }) {
           completata si nu intra in calcul.
         </p>
       )}
-      
+
       <ProgressTable
         caption="Detaliile sesiunilor executate"
         rows={report.rows}

@@ -1,3 +1,5 @@
+import FoodResultCard from "./foods/FoodResultCard";
+import Button from "./ui/Button";
 import React, { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, send } from "../api/client";
@@ -79,7 +81,7 @@ export default function FoodSearch({
         api(
           `/foods/${
             nextMode === "favorites" ? "favorites" : "search"
-          }?${new URLSearchParams({ q: term, page })}`
+          }?${new URLSearchParams({ q: term, page })}`,
         ),
         includeRecipes && nextMode === "search" && page === 1
           ? api("/recipes?q=" + encodeURIComponent(term))
@@ -94,7 +96,7 @@ export default function FoodSearch({
         setRecipes(recipeResponse.value.slice(0, 20));
       else
         setError((current) =>
-          [current, recipeResponse.reason.message].filter(Boolean).join(" ")
+          [current, recipeResponse.reason.message].filter(Boolean).join(" "),
         );
       setSearched(term);
     } finally {
@@ -110,7 +112,7 @@ export default function FoodSearch({
     try {
       await send(
         `/foods/${food.id}/favorite`,
-        food.is_favorite ? "DELETE" : "PUT"
+        food.is_favorite ? "DELETE" : "PUT",
       );
       const updated = { ...food, is_favorite: !food.is_favorite };
       setResult(
@@ -121,10 +123,10 @@ export default function FoodSearch({
               item.id !== food.id
                 ? [item]
                 : mode === "favorites" && !updated.is_favorite
-                ? []
-                : [updated]
+                  ? []
+                  : [updated],
             ),
-          }
+          },
       );
       setDetails((current) => (current?.id === food.id ? updated : current));
     } catch (e) {
@@ -138,7 +140,7 @@ export default function FoodSearch({
     if (
       lock.current ||
       !window.confirm(
-        `Elimini ${ids.length} produs(e) din catalogul activ? Istoricul ramane salvat; codurile excluse nu se reimporta.`
+        `Elimini ${ids.length} produs(e) din catalogul activ? Istoricul ramane salvat; codurile excluse nu se reimporta.`,
       )
     )
       return;
@@ -154,13 +156,13 @@ export default function FoodSearch({
               `/foods/favorites?${new URLSearchParams({
                 q: searched,
                 page: result.page,
-              })}`
+              })}`,
             )
           : await api(
               `/food-catalog/local?${new URLSearchParams({
                 q: searched,
                 page: result.page,
-              })}`
+              })}`,
             );
       setResult(local);
       setChecked([]);
@@ -175,7 +177,7 @@ export default function FoodSearch({
   }
   const foodActions = (food) => (
     <>
-      <button
+      <Button
         type="button"
         onClick={() => {
           setDetails(null);
@@ -183,23 +185,25 @@ export default function FoodSearch({
         }}
       >
         Adauga in jurnal
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
         disabled={busy}
+        variant="secondary"
         aria-pressed={!!food.is_favorite}
         onClick={() => favorite(food)}
       >
         {food.is_favorite ? "Elimina din favorite" : "Adauga la favorite"}
-      </button>
+      </Button>
     </>
   );
   return (
     <div className="my-3 min-w-0 space-y-3">
       <div className="flex flex-wrap gap-2" aria-label="Sursa alimentelor">
-        <button
+        <Button
           type="button"
           disabled={busy}
+          variant={mode === "search" ? "primary" : "secondary"}
           aria-pressed={mode === "search"}
           onClick={() => {
             setMode("search");
@@ -209,10 +213,11 @@ export default function FoodSearch({
           }}
         >
           Catalog
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           disabled={busy}
+          variant={mode === "favorites" ? "primary" : "secondary"}
           aria-pressed={mode === "favorites"}
           onClick={() => {
             setQuery("");
@@ -220,7 +225,7 @@ export default function FoodSearch({
           }}
         >
           Favoritele mele
-        </button>
+        </Button>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
         <label className="min-w-0 flex-1">
@@ -239,16 +244,21 @@ export default function FoodSearch({
             }}
           />
         </label>
-        <button
+        <Button
           type="button"
           disabled={busy || (mode === "search" && query.trim().length < 3)}
           onClick={() => search()}
         >
           {busy ? "Se cauta…" : "Cauta aliment"}
-        </button>
-        <button type="button" disabled={busy} onClick={() => setScanner(true)}>
+        </Button>
+        <Button
+          variant="secondary"
+          type="button"
+          disabled={busy}
+          onClick={() => setScanner(true)}
+        >
           Scaneaza codul
-        </button>
+        </Button>
       </div>
       <p className="text-sm text-muted">
         {mode === "favorites"
@@ -265,100 +275,59 @@ export default function FoodSearch({
             {result.source === "openfoodfacts"
               ? "importate din Open Food Facts"
               : mode === "favorites"
-              ? "favorite"
-              : "catalog local / cache"}
+                ? "favorite"
+                : "catalog local / cache"}
             . {result.message}
           </p>
           {admin && checked.length > 0 && (
-            <button
+            <Button
               type="button"
               disabled={busy}
+              variant="danger"
               onClick={() => archive(checked)}
             >
               Elimina selectate ({checked.length})
-            </button>
+            </Button>
           )}
           <div className="grid gap-2 md:grid-cols-2">
             {result.items.map((food) => (
-              <article
+              <FoodResultCard
                 key={food.id}
-                className="min-w-0 space-y-2 rounded-lg border border-white/10 p-3"
-              >
-                {admin && food.is_public && (
-                  <label className="flex items-center gap-2 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={checked.includes(food.id)}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setChecked((current) =>
-                          e.target.checked
-                            ? [...current, food.id]
-                            : current.filter((id) => id !== food.id)
-                        )
-                      }
-                    />
-                    Selecteaza pentru eliminare: {food.name}
-                  </label>
-                )}
-                <strong className="break-words">{food.name}</strong>
-                <p className="text-sm">
-                  {food.calories} kcal / 100 g · P{" "}
-                  {food.nutrients?.protein ?? "—"} g · C{" "}
-                  {food.nutrients?.carbohydrates ?? "—"} g · G{" "}
-                  {food.nutrients?.fat ?? "—"} g
-                </p>
-                <p className="break-words text-xs text-muted">
-                  {food.catalog_data?.brands}{" "}
-                  {food.barcode && ` · ${food.barcode}`}{" "}
-                  {food.catalog_data?.nutriscore &&
-                    ` · Nutri-Score ${food.catalog_data.nutriscore}`}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setDetails(food)}>
-                    Detalii
-                  </button>
-                  {foodActions(food)}
-                  {onSelect && (
-                    <button
-                      type="button"
-                      onClick={() => onSelect({ ...food, type: "food" })}
-                    >
-                      Alege
-                    </button>
-                  )}
-                  {renderActions?.(food, () => search(result.page))}
-                  {admin && food.is_public && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => archive([food.id])}
-                    >
-                      Elimina din catalog
-                    </button>
-                  )}
-                </div>
-              </article>
+                {...{
+                  food,
+                  admin,
+                  checked,
+                  busy,
+                  setChecked,
+                  setDetails,
+                  foodActions,
+                  onSelect,
+                  renderActions,
+                  search,
+                  result,
+                  archive,
+                }}
+              />
             ))}
           </div>
           <div className="flex gap-2">
             {result.page > 1 && (
-              <button
+              <Button
                 type="button"
                 disabled={busy}
                 onClick={() => search(result.page - 1)}
               >
                 Inapoi
-              </button>
+              </Button>
             )}
             {result.has_more && (
-              <button
+              <Button
                 type="button"
                 disabled={busy}
                 onClick={() => search(result.page + 1)}
               >
                 Urmatoarele 20
-              </button>
+              </Button>
             )}
           </div>
         </>
@@ -366,13 +335,13 @@ export default function FoodSearch({
       {recipes.length > 0 && (
         <div className="flex flex-wrap gap-2" aria-label="Retete gasite">
           {recipes.map((recipe) => (
-            <button
+            <Button
               type="button"
               key={recipe.id}
               onClick={() => onSelect?.({ ...recipe, type: "recipe" })}
             >
               Reteta: {recipe.name} · {recipe.calories_per_serving} kcal/portie
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -416,7 +385,7 @@ export default function FoodSearch({
               await onAdded?.(saved);
             } catch (e) {
               setError(
-                `Portia este salvata, dar actualizarea afisarii a esuat: ${e.message}`
+                `Portia este salvata, dar actualizarea afisarii a esuat: ${e.message}`,
               );
             }
           }}

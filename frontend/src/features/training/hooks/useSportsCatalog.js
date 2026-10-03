@@ -17,7 +17,7 @@ export function useSportsCatalog() {
   const savingRef = useRef(false);
 
   const selectedSport = sports.find(
-    (sport) => String(sport.id) === selectedSportId
+    (sport) => String(sport.id) === selectedSportId,
   );
 
   useEffect(() => {
@@ -93,25 +93,23 @@ export function useSportsCatalog() {
   }
 
   function selectSport(id) {
-  if (savingRef.current) return;
+    if (savingRef.current) return;
 
-  const nextSportId = String(id);
-  if (nextSportId === selectedSportId) return;
+    const nextSportId = String(id);
+    if (nextSportId === selectedSportId) return;
 
-  setError("");
-  setMessage("");
-  setExercises([]);
-  setSelectedSportId(nextSportId);
-}
+    setError("");
+    setMessage("");
+    setExercises([]);
+    setSelectedSportId(nextSportId);
+  }
 
   function addSport(values) {
     return runMutation(async () => {
       const created = await catalogApi.createSport(values);
 
       setSports((current) =>
-        [...current, created].sort((a, b) =>
-          a.name.localeCompare(b.name)
-        )
+        [...current, created].sort((a, b) => a.name.localeCompare(b.name)),
       );
 
       setSelectedSportId(String(created.id));
@@ -136,9 +134,7 @@ export function useSportsCatalog() {
     return runMutation(async () => {
       await catalogApi.deleteSport(sport.id);
 
-      setSports((current) =>
-        current.filter((item) => item.id !== sport.id)
-      );
+      setSports((current) => current.filter((item) => item.id !== sport.id));
 
       setSelectedSportId("");
       setExercises([]);
@@ -155,7 +151,7 @@ export function useSportsCatalog() {
       await catalogApi.deleteExercise(exercise.id);
 
       setExercises((current) =>
-        current.filter((item) => item.id !== exercise.id)
+        current.filter((item) => item.id !== exercise.id),
       );
     }, "Exercitiul a fost arhivat.");
   }
